@@ -1,7 +1,10 @@
 module OrderSequence exposing
     ( OrderSequence
     , fromList
+    , head
+    , orderSequence1
     , stringVal
+    , tail
     , take
     , timeValueOf
     , unConsAt
@@ -13,6 +16,35 @@ import Unit.Time as Time exposing (Time)
 import Unit.Unit as Unit exposing (Unit)
 
 
+{-| Attempt to buy 8 units at time t >= 2
+-}
+orderSequence1 : OrderSequence
+orderSequence1 =
+    fromList
+        [ ( 0, 2 )
+        , ( 1, 2 )
+        , ( 3, 5 )
+        , ( 5, 10 )
+        , ( 6, 4 )
+        , ( 8, 14 )
+        , ( 9, 5 )
+        , ( 10, 2 )
+        , ( 11, 3 )
+        , ( 12, 4 )
+        , ( 14, 11 )
+        , ( 15, 2 )
+        , ( 17, 20 )
+        , ( 19, 1 )
+        , ( 20, 15 )
+        , ( 21, 5 )
+        , ( 23, 8 )
+        , ( 25, 2 )
+        , ( 26, 16 )
+        , ( 28, 4 )
+        , ( 29, 15 )
+        ]
+
+
 orderSequence2 : OrderSequence
 orderSequence2 =
     fromList [ ( 0, 2 ), ( 3, 5 ) ]
@@ -20,6 +52,16 @@ orderSequence2 =
 
 type OrderSequence
     = OrderSequence { orders : List ItemOrder }
+
+
+head : OrderSequence -> Maybe ItemOrder
+head (OrderSequence data) =
+    List.head data.orders
+
+
+tail : OrderSequence -> OrderSequence
+tail (OrderSequence data) =
+    OrderSequence { data | orders = List.tail data.orders |> Maybe.withDefault [] }
 
 
 zero : OrderSequence

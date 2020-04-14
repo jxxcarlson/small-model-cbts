@@ -12,6 +12,7 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Font as Font
 import Html exposing (Html)
+import OrderSequence exposing (OrderSequence)
 import SimpleGraph exposing (Option(..))
 import State exposing (State)
 import Style
@@ -19,6 +20,7 @@ import Time
 import Widget.Button as Button exposing (Size(..))
 import Widget.Style as WS
 import Widget.TextField as TextField
+import World exposing (World)
 
 
 main =
@@ -35,7 +37,7 @@ main =
 
 
 type alias Model =
-    { state : State
+    { world : World
     , runState : RunState
     , counter : Int
     }
@@ -76,7 +78,7 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    { state = State.initialState
+    { world = World.init State.initialState OrderSequence.orderSequence1
     , runState = Paused
     , counter = 0
     }
@@ -97,7 +99,7 @@ update msg model =
             model |> withNoCmd
 
         Step ->
-            { model | state = State.update model.state } |> withNoCmd
+            { model | world = World.update model.world } |> withNoCmd
 
         Reset ->
             model |> withNoCmd
@@ -120,7 +122,7 @@ mainColumn model =
     column Style.mainColumn
         [ el [ centerX, Font.bold, Font.color Style.lightColor, paddingEach { emptyPadding | top = 30 } ] (text "State")
         , column [ centerX, spacing 5, padding 20, Background.color Style.lightColor ]
-            ([ viewState model.state
+            ([ viewState model.world.state
              ]
                 ++ [ stepButton ]
             )

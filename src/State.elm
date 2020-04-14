@@ -7,11 +7,9 @@ module State exposing
     , incrementTime
     , initial
     , initialState
-    , orderSequence1
     , orderSupplies
     , ordersFilled
     , ordersLost
-    , setCustomerOrders
     , setTime
     , stockOnHand
     , stringVal
@@ -39,41 +37,12 @@ of insufficient supply), etc.
 -}
 
 import Message exposing (Messages)
-import Order
+import Order exposing (ItemOrder)
 import OrderSequence exposing (OrderSequence)
 import Random
 import Unit.Money as Money exposing (Money)
 import Unit.Time as Time exposing (Time)
 import Unit.Unit as Unit exposing (Unit, UnitCost)
-
-
-{-| Attempt to buy 8 units at time t >= 2
--}
-orderSequence1 : OrderSequence
-orderSequence1 =
-    OrderSequence.fromList
-        [ ( 0, 2 )
-        , ( 1, 2 )
-        , ( 3, 5 )
-        , ( 5, 10 )
-        , ( 6, 4 )
-        , ( 8, 14 )
-        , ( 9, 5 )
-        , ( 10, 2 )
-        , ( 11, 3 )
-        , ( 12, 4 )
-        , ( 14, 11 )
-        , ( 15, 2 )
-        , ( 17, 20 )
-        , ( 19, 1 )
-        , ( 20, 15 )
-        , ( 21, 5 )
-        , ( 23, 8 )
-        , ( 25, 2 )
-        , ( 26, 16 )
-        , ( 28, 4 )
-        , ( 29, 15 )
-        ]
 
 
 type State
@@ -85,16 +54,15 @@ type State
         , ordersFilled : Unit
         , ordersLost : Unit
         , seed : Random.Seed
-        , orderSequence : OrderSequence
         , messages : Messages
         }
 
 
-update : State -> State
-update state =
+update : ItemOrder -> State -> State
+update itemOrder state =
     state
         |> orderSupplies
-        |> fillCustomerOrder
+        |> fillCustomerOrder itemOrder
         |> incrementTime
 
 
@@ -106,7 +74,6 @@ stringVal (State data) =
     , { label = "stock", value = Unit.stringVal data.stock }
     , { label = "ordersFilled", value = Unit.stringVal data.ordersFilled }
     , { label = "ordersLost", value = Unit.stringVal data.ordersLost }
-    , { label = "orderSequence", value = OrderSequence.stringVal <| OrderSequence.take 5 data.orderSequence }
     , { label = "messages", value = Message.stringVal 6 data.messages }
     ]
 
@@ -115,12 +82,6 @@ initialState : State
 initialState =
     initial
         |> addToStock (Unit.create 10)
-        |> setCustomerOrders orderSequence1
-
-
-orderSequenceOf : State -> OrderSequence
-orderSequenceOf (State data) =
-    data.orderSequence
 
 
 initial : State
@@ -133,7 +94,6 @@ initial =
         , ordersFilled = Unit.create 0
         , ordersLost = Unit.create 0
         , seed = Random.initialSeed 1234
-        , orderSequence = OrderSequence.zero
         , messages = Message.init 5
         }
 
@@ -231,59 +191,49 @@ orderSupplies ((State data) as state) =
 
 
 {-| -}
-fillCustomerOrder : State -> State
-fillCustomerOrder ((State data) as state) =
+fillCustomerOrder : ItemOrder -> State -> State
+fillCustomerOrder itemOrder ((State data) as state) =
     let
-        ( maybeCurrentOrder, newOrderSequence ) =
-            OrderSequence.unConsAt (timeOf state) (orderSequenceOf state)
-    in
-    case maybeCurrentOrder of
-        Nothing ->
-            state
+        currentOrder : Unit
+        currentOrder =
+            Order.unitsOf itemOrder
 
-        Just currentOrder_ ->
+        actualOrder =
+            Unit.min currentOrder (stockOnHand state)
+
+        fiatBalance_ =
             let
-                currentOrder : Unit
-                currentOrder =
-                    Order.unitsOf currentOrder_
-
-                actualOrder =
-                    Unit.min currentOrder (stockOnHand state)
-
-                fiatBalance_ =
-                    let
-                        orderPrice =
-                            Unit.costOf config.unitPrice actualOrder
-                    in
-                    Money.add (fiatBalance state) orderPrice
-
-                ordersFilled_ =
-                    Unit.add (ordersFilled state) actualOrder
-
-                currentOrderLoss =
-                    Unit.sub currentOrder actualOrder
-
-                ordersLost_ =
-                    Unit.sub (ordersLost state) currentOrderLoss
-
-                message =
-                    "BUY (t, filled, lost) = ("
-                        ++ Time.stringVal (timeOf state)
-                        ++ ", "
-                        ++ Unit.stringVal ordersFilled_
-                        ++ ", "
-                        ++ Unit.stringVal ordersLost_
-                        ++ ")"
+                orderPrice =
+                    Unit.costOf config.unitPrice actualOrder
             in
-            State
-                { data
-                    | fiatBalance = fiatBalance_
-                    , ordersFilled = ordersFilled_
-                    , ordersLost = ordersLost_
-                    , stock = Unit.sub (stockOnHand state) actualOrder
-                    , orderSequence = newOrderSequence
-                    , messages = Message.push message data.messages
-                }
+            Money.add (fiatBalance state) orderPrice
+
+        ordersFilled_ =
+            Unit.add (ordersFilled state) actualOrder
+
+        currentOrderLoss =
+            Unit.sub currentOrder actualOrder
+
+        ordersLost_ =
+            Unit.sub (ordersLost state) currentOrderLoss
+
+        message =
+            "BUY (t, filled, lost) = ("
+                ++ Time.stringVal (timeOf state)
+                ++ ", "
+                ++ Unit.stringVal ordersFilled_
+                ++ ", "
+                ++ Unit.stringVal ordersLost_
+                ++ ")"
+    in
+    State
+        { data
+            | fiatBalance = fiatBalance_
+            , ordersFilled = ordersFilled_
+            , ordersLost = ordersLost_
+            , stock = Unit.sub (stockOnHand state) actualOrder
+            , messages = Message.push message data.messages
+        }
 
 
 
@@ -342,11 +292,6 @@ incrementTime (State data) =
 addToFiatBalance : Money -> State -> State
 addToFiatBalance fc (State data) =
     State { data | fiatBalance = Money.add fc data.fiatBalance }
-
-
-setCustomerOrders : OrderSequence -> State -> State
-setCustomerOrders orderSequence (State data) =
-    State { data | orderSequence = orderSequence }
 
 
 addToStock : Unit -> State -> State
