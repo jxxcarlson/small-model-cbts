@@ -7,6 +7,7 @@ module Unit.Unit exposing
     , itemsFor
     , lt
     , min
+    , stringVal
     , sub
     , unitCost
     , value
@@ -21,6 +22,11 @@ type Unit
 
 type UnitCost
     = UnitCost Float
+
+
+stringVal : Unit -> String
+stringVal (Unit k) =
+    String.fromInt k
 
 
 unitCost : Float -> UnitCost

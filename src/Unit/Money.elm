@@ -7,6 +7,7 @@ module Unit.Money exposing
     , min
     , mulBy
     , mulByInt
+    , stringVal
     , sub
     , value
     )
@@ -24,6 +25,11 @@ create m =
 value : Money -> Float
 value (Money k) =
     k
+
+
+stringVal : Money -> String
+stringVal (Money k) =
+    String.fromFloat k
 
 
 add : Money -> Money -> Money

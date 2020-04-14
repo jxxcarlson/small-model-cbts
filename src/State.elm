@@ -3,7 +3,8 @@ module State exposing
     , addToFiatBalance
     , addToStock
     , fiatBalance
-    , fillCustomerOrderAt
+    , fillCustomerOrder
+    , incrementTime
     , initial
     , initialState
     , orderSequence1
@@ -11,9 +12,33 @@ module State exposing
     , ordersFilled
     , ordersLost
     , setCustomerOrders
+    , setTime
     , stockOnHand
+    , stringVal
+    , timeOf
+    , update
     )
 
+{-| The State in this model refers to the state of
+business (pulsero) which sells a single item to the public
+and which purchase its stock from a single supplier.
+The state contains fields such as "stock," which
+is the inventory, denominated in Units, as well
+as orders filled, orders lost (not filled because
+of insufficient supply), etc.
+
+    Values such as unitCost (cost of the item to the
+    pulsero) and unitPrice (cost of the item to the public)
+    are defined in config.
+
+    There are two main functions:
+
+        - fillCustomerOrder : Time -> State -> State
+        - orderSupplies : Time -> State -> State
+
+-}
+
+import Message exposing (Messages)
 import Order
 import OrderSequence exposing (OrderSequence)
 import Random
@@ -26,7 +51,29 @@ import Unit.Unit as Unit exposing (Unit, UnitCost)
 -}
 orderSequence1 : OrderSequence
 orderSequence1 =
-    OrderSequence.fromList [ ( 0, 2 ), ( 3, 5 ) ]
+    OrderSequence.fromList
+        [ ( 0, 2 )
+        , ( 1, 2 )
+        , ( 3, 5 )
+        , ( 5, 10 )
+        , ( 6, 4 )
+        , ( 8, 14 )
+        , ( 9, 5 )
+        , ( 10, 2 )
+        , ( 11, 3 )
+        , ( 12, 4 )
+        , ( 14, 11 )
+        , ( 15, 2 )
+        , ( 17, 20 )
+        , ( 19, 1 )
+        , ( 20, 15 )
+        , ( 21, 5 )
+        , ( 23, 8 )
+        , ( 25, 2 )
+        , ( 26, 16 )
+        , ( 28, 4 )
+        , ( 29, 15 )
+        ]
 
 
 type State
@@ -39,7 +86,29 @@ type State
         , ordersLost : Unit
         , seed : Random.Seed
         , orderSequence : OrderSequence
+        , messages : Messages
         }
+
+
+update : State -> State
+update state =
+    state
+        |> orderSupplies
+        |> fillCustomerOrder
+        |> incrementTime
+
+
+stringVal : State -> List { label : String, value : String }
+stringVal (State data) =
+    [ { label = "t", value = Time.stringVal data.t }
+    , { label = "fiat", value = Money.stringVal data.fiatBalance }
+    , { label = "cc", value = Money.stringVal data.ccBalance }
+    , { label = "stock", value = Unit.stringVal data.stock }
+    , { label = "ordersFilled", value = Unit.stringVal data.ordersFilled }
+    , { label = "ordersLost", value = Unit.stringVal data.ordersLost }
+    , { label = "orderSequence", value = OrderSequence.stringVal <| OrderSequence.take 5 data.orderSequence }
+    , { label = "messages", value = Message.stringVal 6 data.messages }
+    ]
 
 
 initialState : State
@@ -65,22 +134,8 @@ initial =
         , ordersLost = Unit.create 0
         , seed = Random.initialSeed 1234
         , orderSequence = OrderSequence.zero
+        , messages = Message.init 5
         }
-
-
-addToFiatBalance : Money -> State -> State
-addToFiatBalance fc (State data) =
-    State { data | fiatBalance = Money.add fc data.fiatBalance }
-
-
-setCustomerOrders : OrderSequence -> State -> State
-setCustomerOrders orderSequence (State data) =
-    State { data | orderSequence = orderSequence }
-
-
-addToStock : Unit -> State -> State
-addToStock units (State data) =
-    State { data | stock = Unit.add data.stock units }
 
 
 type alias Config =
@@ -104,36 +159,6 @@ config =
     }
 
 
-seedOf : State -> Random.Seed
-seedOf (State data) =
-    data.seed
-
-
-stockOnHand : State -> Unit
-stockOnHand (State data) =
-    data.stock
-
-
-fiatBalance : State -> Money
-fiatBalance (State data) =
-    data.fiatBalance
-
-
-ccBalance : State -> Money
-ccBalance (State data) =
-    data.ccBalance
-
-
-ordersFilled : State -> Unit
-ordersFilled (State data) =
-    data.ordersFilled
-
-
-ordersLost : State -> Unit
-ordersLost (State data) =
-    data.ordersLost
-
-
 {-|
 
     Steps to determine order data
@@ -143,8 +168,12 @@ ordersLost (State data) =
     3. The actual
 
 -}
-orderSupplies : Time -> State -> State
-orderSupplies t ((State data) as state) =
+orderSupplies : State -> State
+orderSupplies ((State data) as state) =
+    let
+        t_ =
+            timeOf state
+    in
     case Unit.lt (stockOnHand state) config.stockOnHandThreshold of
         False ->
             state
@@ -179,6 +208,15 @@ orderSupplies t ((State data) as state) =
                             Money.add ccOrderAmount fiatOrderAmount
                     in
                     Unit.itemsFor config.unitCost totalOrder
+
+                message =
+                    "ORDER (t, fiat, cc)    : ("
+                        ++ Time.stringVal (timeOf state)
+                        ++ ", "
+                        ++ Money.stringVal fiatOrderAmount
+                        ++ ", "
+                        ++ Money.stringVal ccOrderAmount
+                        ++ ")"
             in
             State
                 { data
@@ -188,14 +226,16 @@ orderSupplies t ((State data) as state) =
                     , stock = Unit.add (stockOnHand state) actualOrderAmount
                     , ordersFilled = Unit.add actualOrderAmount (ordersFilled state)
                     , ordersLost = Unit.add (Unit.sub orderQuantity actualOrderAmount) (ordersLost state)
+                    , messages = Message.push message data.messages
                 }
 
 
-fillCustomerOrderAt : Time -> State -> State
-fillCustomerOrderAt t ((State data) as state) =
+{-| -}
+fillCustomerOrder : State -> State
+fillCustomerOrder ((State data) as state) =
     let
         ( maybeCurrentOrder, newOrderSequence ) =
-            OrderSequence.unConsAt t (orderSequenceOf state)
+            OrderSequence.unConsAt (timeOf state) (orderSequenceOf state)
     in
     case maybeCurrentOrder of
         Nothing ->
@@ -225,6 +265,15 @@ fillCustomerOrderAt t ((State data) as state) =
 
                 ordersLost_ =
                     Unit.sub (ordersLost state) currentOrderLoss
+
+                message =
+                    "BUY (t, filled, lost) = ("
+                        ++ Time.stringVal (timeOf state)
+                        ++ ", "
+                        ++ Unit.stringVal ordersFilled_
+                        ++ ", "
+                        ++ Unit.stringVal ordersLost_
+                        ++ ")"
             in
             State
                 { data
@@ -232,22 +281,92 @@ fillCustomerOrderAt t ((State data) as state) =
                     , ordersFilled = ordersFilled_
                     , ordersLost = ordersLost_
                     , stock = Unit.sub (stockOnHand state) actualOrder
-                    , t = t
                     , orderSequence = newOrderSequence
+                    , messages = Message.push message data.messages
                 }
 
 
 
---
---mapWithState : (s -> a -> ( s, a )) -> ( s, List a ) -> ( s, List a )
---mapWithState f ( state, list ) =
---    let
---        folder : a -> ( s, List a ) -> ( s, List a )
---        folder item ( state_, list_ ) =
---            let
---                ( newState_, item_ ) =
---                    f state_ item
---            in
---            ( newState_, item_ :: list_ )
---    in
---    List.foldl folder ( state, [] ) list
+-- GETTERS
+
+
+timeOf : State -> Time
+timeOf (State data) =
+    data.t
+
+
+seedOf : State -> Random.Seed
+seedOf (State data) =
+    data.seed
+
+
+stockOnHand : State -> Unit
+stockOnHand (State data) =
+    data.stock
+
+
+fiatBalance : State -> Money
+fiatBalance (State data) =
+    data.fiatBalance
+
+
+ccBalance : State -> Money
+ccBalance (State data) =
+    data.ccBalance
+
+
+ordersFilled : State -> Unit
+ordersFilled (State data) =
+    data.ordersFilled
+
+
+ordersLost : State -> Unit
+ordersLost (State data) =
+    data.ordersLost
+
+
+
+-- SETTERS
+
+
+setTime : Time -> State -> State
+setTime t (State data) =
+    State { data | t = t }
+
+
+incrementTime : State -> State
+incrementTime (State data) =
+    State { data | t = Time.increment data.t }
+
+
+addToFiatBalance : Money -> State -> State
+addToFiatBalance fc (State data) =
+    State { data | fiatBalance = Money.add fc data.fiatBalance }
+
+
+setCustomerOrders : OrderSequence -> State -> State
+setCustomerOrders orderSequence (State data) =
+    State { data | orderSequence = orderSequence }
+
+
+addToStock : Unit -> State -> State
+addToStock units (State data) =
+    State { data | stock = Unit.add data.stock units }
+
+
+
+-- NOT USED
+
+
+mapWithState : (s -> a -> ( s, a )) -> ( s, List a ) -> ( s, List a )
+mapWithState f ( state, list ) =
+    let
+        folder : a -> ( s, List a ) -> ( s, List a )
+        folder item ( state_, list_ ) =
+            let
+                ( newState_, item_ ) =
+                    f state_ item
+            in
+            ( newState_, item_ :: list_ )
+    in
+    List.foldl folder ( state, [] ) list

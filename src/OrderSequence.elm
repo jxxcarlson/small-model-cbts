@@ -1,6 +1,8 @@
 module OrderSequence exposing
     ( OrderSequence
     , fromList
+    , stringVal
+    , take
     , timeValueOf
     , unConsAt
     , zero
@@ -23,6 +25,17 @@ type OrderSequence
 zero : OrderSequence
 zero =
     OrderSequence { orders = [] }
+
+
+stringVal : OrderSequence -> String
+stringVal (OrderSequence data) =
+    List.map Order.stringValue data.orders
+        |> String.join ", "
+
+
+take : Int -> OrderSequence -> OrderSequence
+take k (OrderSequence data) =
+    OrderSequence { orders = List.take k data.orders }
 
 
 timeValueOf : OrderSequence -> Time

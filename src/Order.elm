@@ -1,4 +1,12 @@
-module Order exposing (ItemOrder, create, init, initFromPair, timeOf, unitsOf)
+module Order exposing
+    ( ItemOrder
+    , create
+    , init
+    , initFromPair
+    , stringValue
+    , timeOf
+    , unitsOf
+    )
 
 import Unit.Time as Time exposing (Time)
 import Unit.Unit as Item exposing (Unit)
@@ -6,6 +14,11 @@ import Unit.Unit as Item exposing (Unit)
 
 type ItemOrder
     = Order ( Time, Unit )
+
+
+stringValue : ItemOrder -> String
+stringValue (Order ( t, u )) =
+    "(" ++ Time.stringVal t ++ ", " ++ Item.stringVal u ++ ")"
 
 
 create : Int -> Int -> ItemOrder

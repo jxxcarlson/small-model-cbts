@@ -39,7 +39,7 @@ suite =
             \_ ->
                 let
                     newState =
-                        State.fillCustomerOrderAt (Time.create 0) initialState
+                        State.fillCustomerOrder initialState
 
                     stock =
                         State.stockOnHand newState
@@ -53,9 +53,11 @@ suite =
                 let
                     newState =
                         initialState
-                            |> State.fillCustomerOrderAt (Time.create 0)
-                            |> State.fillCustomerOrderAt (Time.create 1)
-                            |> State.fillCustomerOrderAt (Time.create 2)
+                            |> State.fillCustomerOrder
+                            |> State.incrementTime
+                            |> State.fillCustomerOrder
+                            |> State.incrementTime
+                            |> State.fillCustomerOrder
 
                     stock =
                         State.stockOnHand newState
@@ -69,8 +71,13 @@ suite =
                 let
                     newState =
                         initialState
-                            |> State.fillCustomerOrderAt (Time.create 0)
-                            |> State.fillCustomerOrderAt (Time.create 3)
+                            |> State.fillCustomerOrder
+                            |> State.incrementTime
+                            |> State.fillCustomerOrder
+                            |> State.incrementTime
+                            |> State.fillCustomerOrder
+                            |> State.incrementTime
+                            |> State.fillCustomerOrder
 
                     stock =
                         State.stockOnHand newState
@@ -91,7 +98,7 @@ suite =
 
                     newState =
                         Debug.log "newState" <|
-                            State.orderSupplies (Time.create 0) initialState1
+                            State.orderSupplies initialState1
 
                     st =
                         State.stockOnHand newState
@@ -116,7 +123,7 @@ suite =
 
                     newState =
                         Debug.log "newState" <|
-                            State.orderSupplies (Time.create 0) initialState1
+                            State.orderSupplies initialState1
 
                     st =
                         State.stockOnHand newState
