@@ -45,7 +45,7 @@ type State
 initialState : State
 initialState =
     initial
-        |> addToStock 10
+        |> addToStock (Unit.create 10)
         |> setCustomerOrders orderSequence1
 
 
