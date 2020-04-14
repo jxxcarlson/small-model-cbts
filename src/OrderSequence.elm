@@ -1,13 +1,19 @@
 module OrderSequence exposing
     ( OrderSequence
     , fromList
-    , timeOf
+    , timeValueOf
     , unConsAt
     , zero
     )
 
-import Fundamental exposing (Time, Units)
 import Order exposing (ItemOrder)
+import Unit.Time as Time exposing (Time)
+import Unit.Unit as Unit exposing (Unit)
+
+
+orderSequence2 : OrderSequence
+orderSequence2 =
+    fromList [ ( 0, 2 ), ( 3, 5 ) ]
 
 
 type OrderSequence
@@ -19,27 +25,27 @@ zero =
     OrderSequence { orders = [] }
 
 
-timeOf : OrderSequence -> Time
-timeOf (OrderSequence data) =
+timeValueOf : OrderSequence -> Time
+timeValueOf (OrderSequence data) =
     List.head data.orders
         |> Maybe.map Order.timeOf
-        |> Maybe.withDefault 0
+        |> Maybe.withDefault Time.zero
 
 
-fromList : List ( Time, Units ) -> OrderSequence
+fromList : List ( Int, Int ) -> OrderSequence
 fromList list =
     let
         orders =
             list
                 |> List.sortBy (\( t, u ) -> t)
-                |> List.map (\( t, u ) -> Order.initFromPair ( t, u ))
+                |> List.map (\( t, u ) -> Order.create t u)
     in
     OrderSequence { orders = orders }
 
 
-push : Time -> Units -> OrderSequence -> OrderSequence
+push : Time -> Unit -> OrderSequence -> OrderSequence
 push t u ((OrderSequence data) as orderSequence) =
-    case t >= timeOf orderSequence of
+    case Time.gte t (timeValueOf orderSequence) of
         False ->
             orderSequence
 
@@ -49,7 +55,7 @@ push t u ((OrderSequence data) as orderSequence) =
 
 unConsAt : Time -> OrderSequence -> ( Maybe ItemOrder, OrderSequence )
 unConsAt t ((OrderSequence data) as orderSequence) =
-    case t /= timeOf orderSequence of
+    case t /= timeValueOf orderSequence of
         True ->
             ( Nothing, orderSequence )
 

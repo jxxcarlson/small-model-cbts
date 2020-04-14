@@ -23,6 +23,12 @@ initialState =
         |> State.setCustomerOrders orderSequence1
 
 
+initialState2 : State
+initialState2 =
+    State.initial
+        |> State.addToFiatBalance 40
+
+
 suite : Test
 suite =
     describe "The State module"
@@ -61,9 +67,7 @@ suite =
                     newState =
                         initialState
                             |> State.fillCustomerOrderAt 0
-                            |> Debug.log "(1)"
                             |> State.fillCustomerOrderAt 3
-                            |> Debug.log "(2)"
 
                     stock =
                         State.stockOnHand newState
@@ -72,4 +76,50 @@ suite =
                         State.fiatBalance newState
                 in
                 Expect.equal ( stock, fb ) ( 3, 14 )
+        , test "set up to buy supplies" <|
+            \_ ->
+                Expect.equal (State.fiatBalance initialState2) 40
+        , only <|
+            test "Buy supplies" <|
+                \_ ->
+                    let
+                        initialState1 =
+                            State.initial
+                                |> State.addToFiatBalance 40
+
+                        newState =
+                            Debug.log "newState" <|
+                                State.orderSupplies 0 initialState1
+
+                        st =
+                            State.stockOnHand newState
+
+                        fb =
+                            State.fiatBalance newState
+
+                        orf =
+                            State.ordersFilled newState
+
+                        lost =
+                            State.ordersLost newState
+                    in
+                    Expect.equal ( ( st, fb ), ( orf, lost ) ) ( ( 20, 20 ), ( 20, 0 ) )
+        , test "Buy supplies with smaller fiat balance" <|
+            \_ ->
+                let
+                    initialState1 =
+                        State.initial
+                            |> State.addToFiatBalance 10
+
+                    newState =
+                        Debug.log "newState" <|
+                            State.orderSupplies 0 initialState1
+
+                    st =
+                        State.stockOnHand newState
+
+                    fb =
+                        State.fiatBalance newState
+                in
+                Expect.equal ( st, fb ) ( 20, 20 )
         ]

@@ -1,19 +1,25 @@
 module State exposing
     ( State
+    , addToFiatBalance
     , addToStock
     , fiatBalance
     , fillCustomerOrderAt
     , initial
     , initialState
     , orderSequence1
+    , orderSupplies
+    , ordersFilled
+    , ordersLost
     , setCustomerOrders
     , stockOnHand
     )
 
-import Fundamental exposing (Time, Units)
 import Order
 import OrderSequence exposing (OrderSequence)
 import Random
+import Unit.Money as Money exposing (Money)
+import Unit.Time as Time exposing (Time)
+import Unit.Unit as Unit exposing (Unit, UnitCost)
 
 
 {-| Attempt to buy 8 units at time t >= 2
@@ -26,11 +32,11 @@ orderSequence1 =
 type State
     = State
         { t : Time
-        , fiatBalance : Float
-        , ccBalance : Float
-        , stock : Units
-        , ordersFilled : Units
-        , ordersLost : Units
+        , fiatBalance : Money
+        , ccBalance : Money
+        , stock : Unit
+        , ordersFilled : Unit
+        , ordersLost : Unit
         , seed : Random.Seed
         , orderSequence : OrderSequence
         }
@@ -51,15 +57,20 @@ orderSequenceOf (State data) =
 initial : State
 initial =
     State
-        { t = 0
-        , fiatBalance = 0
-        , ccBalance = 0
-        , stock = 0
-        , ordersFilled = 0
-        , ordersLost = 0
+        { t = Time.create 0
+        , fiatBalance = Money.create 0
+        , ccBalance = Money.create 0
+        , stock = Unit.create 0
+        , ordersFilled = Unit.create 0
+        , ordersLost = Unit.create 0
         , seed = Random.initialSeed 1234
         , orderSequence = OrderSequence.zero
         }
+
+
+addToFiatBalance : Money -> State -> State
+addToFiatBalance fc (State data) =
+    State { data | fiatBalance = Money.add fc data.fiatBalance }
 
 
 setCustomerOrders : OrderSequence -> State -> State
@@ -67,47 +78,117 @@ setCustomerOrders orderSequence (State data) =
     State { data | orderSequence = orderSequence }
 
 
-addToStock : Units -> State -> State
+addToStock : Unit -> State -> State
 addToStock units (State data) =
-    State { data | stock = data.stock + units }
+    State { data | stock = Unit.add data.stock units }
 
 
 type alias Config =
-    { unitCost : Float
-    , unitPrice : Float
+    { unitCost : UnitCost
+    , unitPrice : UnitCost
+    , stockOnHandThreshold : Unit
+    , lowOrder : Unit
+    , highOrder : Unit
+    , ccOrderMax : Money
     }
 
 
 config : Config
 config =
-    { unitCost = 1.0
-    , unitPrice = 2.0
+    { unitCost = Unit.unitCost 1.0
+    , unitPrice = Unit.unitCost 2.0
+    , stockOnHandThreshold = Unit.create 10
+    , lowOrder = Unit.create 5
+    , highOrder = Unit.create 20
+    , ccOrderMax = Money.create 5
     }
 
 
-stockOnHand : State -> Units
+seedOf : State -> Random.Seed
+seedOf (State data) =
+    data.seed
+
+
+stockOnHand : State -> Unit
 stockOnHand (State data) =
     data.stock
 
 
-fiatBalance : State -> Float
+fiatBalance : State -> Money
 fiatBalance (State data) =
     data.fiatBalance
 
 
-ccBalance : State -> Float
+ccBalance : State -> Money
 ccBalance (State data) =
     data.ccBalance
 
 
-ordersFilled : State -> Units
+ordersFilled : State -> Unit
 ordersFilled (State data) =
     data.ordersFilled
 
 
-ordersLost : State -> Units
+ordersLost : State -> Unit
 ordersLost (State data) =
     data.ordersLost
+
+
+{-|
+
+    Steps to determine order data
+    1. Choose a random orderQuantity, then compute orderCost
+    2. Based on current fiat and cc account balances, determine
+       orderAmount from each account
+    3. The actual
+
+-}
+orderSupplies : Time -> State -> State
+orderSupplies t ((State data) as state) =
+    case Unit.lt (stockOnHand state) config.stockOnHandThreshold of
+        False ->
+            state
+
+        True ->
+            let
+                ( orderQuantity_, newSeed ) =
+                    Random.step (Random.int (Unit.value config.lowOrder) (Unit.value config.highOrder)) (seedOf state)
+
+                orderQuantity =
+                    Unit.create orderQuantity_
+
+                orderCost =
+                    Unit.costOf config.unitCost orderQuantity
+
+                ccAvailable =
+                    Debug.log "ccAvailable" <|
+                        Money.min config.ccOrderMax (ccBalance state)
+
+                ccOrderAmount : Money
+                ccOrderAmount =
+                    Debug.log "ccOrderAmount" <|
+                        Money.min ccAvailable orderCost
+
+                fiatOrderAmount : Money
+                fiatOrderAmount =
+                    Money.min (fiatBalance state) (Money.sub orderCost ccOrderAmount)
+
+                actualOrderAmount =
+                    let
+                        totalOrder =
+                            Money.add ccOrderAmount fiatOrderAmount
+                    in
+                    Unit.itemsFor config.unitCost totalOrder
+            in
+            State
+                { data
+                    | seed = newSeed
+                    , ccBalance = Money.sub (ccBalance state) ccOrderAmount
+                    , fiatBalance = Money.sub (fiatBalance state) fiatOrderAmount
+                    , stock = Unit.add (stockOnHand state) actualOrderAmount
+                    , ordersFilled = Unit.add actualOrderAmount (ordersFilled state)
+                    , ordersLost = Unit.add (Unit.sub orderQuantity actualOrderAmount) (ordersLost state)
+                }
 
 
 fillCustomerOrderAt : Time -> State -> State
@@ -122,34 +203,35 @@ fillCustomerOrderAt t ((State data) as state) =
 
         Just currentOrder_ ->
             let
+                currentOrder : Unit
                 currentOrder =
                     Order.unitsOf currentOrder_
 
                 actualOrder =
-                    min currentOrder (stockOnHand state)
+                    Unit.min currentOrder (stockOnHand state)
 
                 fiatBalance_ =
-                    fiatBalance state
-                        + config.unitPrice
-                        * toFloat actualOrder
+                    let
+                        orderPrice =
+                            Unit.costOf config.unitPrice actualOrder
+                    in
+                    Money.add (fiatBalance state) orderPrice
 
                 ordersFilled_ =
-                    ordersFilled state
-                        + actualOrder
+                    Unit.add (ordersFilled state) actualOrder
 
                 currentOrderLoss =
-                    currentOrder
-                        - actualOrder
+                    Unit.sub currentOrder actualOrder
 
                 ordersLost_ =
-                    ordersLost state + currentOrderLoss
+                    Unit.sub (ordersLost state) currentOrderLoss
             in
             State
                 { data
                     | fiatBalance = fiatBalance_
                     , ordersFilled = ordersFilled_
                     , ordersLost = ordersLost_
-                    , stock = stockOnHand state - actualOrder
+                    , stock = Unit.sub (stockOnHand state) actualOrder
                     , t = t
                     , orderSequence = newOrderSequence
                 }
