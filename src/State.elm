@@ -7,6 +7,7 @@ module State exposing
     , incrementTime
     , initial
     , initialState
+    , labels
     , orderSupplies
     , ordersFilled
     , ordersLost
@@ -38,7 +39,7 @@ of insufficient supply), etc.
 
 import Message exposing (Messages)
 import Order exposing (ItemOrder)
-import OrderSequence exposing (OrderSequence)
+import OrderSequence exposing (Future)
 import Random
 import Unit.Money as Money exposing (Money)
 import Unit.Time as Time exposing (Time)
@@ -55,6 +56,9 @@ type State
         , ordersLost : Unit
         , seed : Random.Seed
         , messages : Messages
+        , orderPlaced : Unit
+        , customerOrder : Unit
+        , businessOrder : Unit
         }
 
 
@@ -66,15 +70,22 @@ update itemOrder state =
         |> incrementTime
 
 
-stringVal : State -> List { label : String, value : String }
+labels : List String
+labels =
+    [ "t", "fi", "cc", "st", "of", "ol", "OP", "CO", "BO" ]
+
+
+stringVal : State -> List String
 stringVal (State data) =
-    [ { label = "t", value = Time.stringVal data.t }
-    , { label = "fiat", value = Money.stringVal data.fiatBalance }
-    , { label = "cc", value = Money.stringVal data.ccBalance }
-    , { label = "stock", value = Unit.stringVal data.stock }
-    , { label = "ordersFilled", value = Unit.stringVal data.ordersFilled }
-    , { label = "ordersLost", value = Unit.stringVal data.ordersLost }
-    , { label = "messages", value = Message.stringVal 6 data.messages }
+    [ Time.stringVal data.t
+    , Money.stringVal data.fiatBalance
+    , Money.stringVal data.ccBalance
+    , Unit.stringVal data.stock
+    , Unit.stringVal data.ordersFilled
+    , Unit.stringVal data.ordersLost
+    , Unit.stringVal data.orderPlaced
+    , Unit.stringVal data.customerOrder
+    , Unit.stringVal data.businessOrder
     ]
 
 
@@ -95,6 +106,9 @@ initial =
         , ordersLost = Unit.create 0
         , seed = Random.initialSeed 1234
         , messages = Message.init 5
+        , orderPlaced = Unit.create 0
+        , customerOrder = Unit.create 0
+        , businessOrder = Unit.create 0
         }
 
 
@@ -150,13 +164,11 @@ orderSupplies ((State data) as state) =
                     Unit.costOf config.unitCost orderQuantity
 
                 ccAvailable =
-                    Debug.log "ccAvailable" <|
-                        Money.min config.ccOrderMax (ccBalance state)
+                    Money.min config.ccOrderMax (ccBalance state)
 
                 ccOrderAmount : Money
                 ccOrderAmount =
-                    Debug.log "ccOrderAmount" <|
-                        Money.min ccAvailable orderCost
+                    Money.min ccAvailable orderCost
 
                 fiatOrderAmount : Money
                 fiatOrderAmount =
@@ -187,6 +199,7 @@ orderSupplies ((State data) as state) =
                     , ordersFilled = Unit.add actualOrderAmount (ordersFilled state)
                     , ordersLost = Unit.add (Unit.sub orderQuantity actualOrderAmount) (ordersLost state)
                     , messages = Message.push message data.messages
+                    , businessOrder = actualOrderAmount
                 }
 
 
@@ -215,7 +228,7 @@ fillCustomerOrder itemOrder ((State data) as state) =
             Unit.sub currentOrder actualOrder
 
         ordersLost_ =
-            Unit.sub (ordersLost state) currentOrderLoss
+            Unit.add (ordersLost state) currentOrderLoss
 
         message =
             "BUY (t, filled, lost) = ("
@@ -232,6 +245,8 @@ fillCustomerOrder itemOrder ((State data) as state) =
             , ordersFilled = ordersFilled_
             , ordersLost = ordersLost_
             , stock = Unit.sub (stockOnHand state) actualOrder
+            , orderPlaced = currentOrder
+            , customerOrder = actualOrder
             , messages = Message.push message data.messages
         }
 

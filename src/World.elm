@@ -1,16 +1,16 @@
 module World exposing (World, init, update)
 
-import OrderSequence exposing (OrderSequence)
+import OrderSequence exposing (Future)
 import State exposing (State)
 
 
 type alias World =
     { state : State
-    , future : OrderSequence
+    , future : Future
     }
 
 
-init : State -> OrderSequence -> World
+init : State -> Future -> World
 init state future =
     { state = state, future = future }
 

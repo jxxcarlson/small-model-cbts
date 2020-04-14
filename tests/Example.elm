@@ -2,7 +2,7 @@ module Example exposing (..)
 
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
-import OrderSequence exposing (OrderSequence)
+import OrderSequence exposing (Future)
 import State exposing (State)
 import Test exposing (..)
 import Unit.Money as Money
@@ -12,7 +12,7 @@ import Unit.Unit as Unit
 
 {-| Attempt to buy 8 units at time t >= 2
 -}
-orderSequence1 : OrderSequence
+orderSequence1 : Future
 orderSequence1 =
     OrderSequence.fromList [ ( 0, 2 ), ( 3, 5 ) ]
 
@@ -97,8 +97,7 @@ suite =
                             |> State.addToFiatBalance (Money.create 40)
 
                     newState =
-                        Debug.log "newState" <|
-                            State.orderSupplies initialState1
+                        State.orderSupplies initialState1
 
                     st =
                         State.stockOnHand newState
@@ -122,8 +121,7 @@ suite =
                             |> State.addToFiatBalance (Money.create 10)
 
                     newState =
-                        Debug.log "newState" <|
-                            State.orderSupplies initialState1
+                        State.orderSupplies initialState1
 
                     st =
                         State.stockOnHand newState

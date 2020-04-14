@@ -7,9 +7,11 @@ module Style exposing
     , lightColor
     , log
     , mainColumn
+    , paleBlue
     , pausedColor
     , selectedButton
     , titleColor
+    , whiteColor
     )
 
 import Element exposing (..)
@@ -83,9 +85,19 @@ lightColor =
     rgb255 200 200 200
 
 
+whiteColor : Color
+whiteColor =
+    rgb255 220 220 220
+
+
 lightBlue : Color
 lightBlue =
     rgb255 90 90 255
+
+
+paleBlue : Color
+paleBlue =
+    rgb255 190 190 255
 
 
 pausedColor : Color
