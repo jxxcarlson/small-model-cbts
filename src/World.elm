@@ -1,6 +1,6 @@
 module World exposing (World, init, update)
 
-import OrderSequence exposing (Future)
+import Future exposing (Future)
 import State exposing (State)
 
 
@@ -17,7 +17,7 @@ init state future =
 
 update : World -> World
 update world =
-    case OrderSequence.head world.future of
+    case Future.head world.future of
         Nothing ->
             world
 
@@ -27,6 +27,6 @@ update world =
                     State.update itemOrder world.state
 
                 future =
-                    OrderSequence.tail world.future
+                    Future.tail world.future
             in
             { state = newState, future = future }

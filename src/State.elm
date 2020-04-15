@@ -37,9 +37,9 @@ of insufficient supply), etc.
 
 -}
 
+import Future exposing (Future)
 import Message exposing (Messages)
 import Order exposing (ItemOrder)
-import OrderSequence exposing (Future)
 import Random
 import Unit.Money as Money exposing (Money)
 import Unit.Time as Time exposing (Time)
@@ -72,7 +72,7 @@ update itemOrder state =
 
 labels : List String
 labels =
-    [ "t", "fi", "cc", "st", "of", "ol", "OP", "CO", "BO" ]
+    [ "t", "fi", "cc", "st", "of", "ol", "OO", "CO", "BO" ]
 
 
 stringVal : State -> List String

@@ -1,8 +1,9 @@
-module OrderSequence exposing
+module Future exposing
     ( Future
     , fromList
+    , futureV1
     , head
-    , orderSequence1
+    , length
     , stringVal
     , tail
     , take
@@ -18,8 +19,8 @@ import Unit.Unit as Unit exposing (Unit)
 
 {-| Attempt to buy 8 units at time t >= 2
 -}
-orderSequence1 : Future
-orderSequence1 =
+futureV1 : Future
+futureV1 =
     fromList
         [ ( 0, 2 )
         , ( 1, 2 )
@@ -60,6 +61,11 @@ orderSequence2 =
 
 type Future
     = OrderSequence { orders : List ItemOrder }
+
+
+length : Future -> Int
+length (OrderSequence data) =
+    List.length data.orders
 
 
 head : Future -> Maybe ItemOrder

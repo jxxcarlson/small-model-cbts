@@ -1,8 +1,8 @@
 module Example exposing (..)
 
 import Expect exposing (Expectation)
+import Future exposing (Future)
 import Fuzz exposing (Fuzzer, int, list, string)
-import OrderSequence exposing (Future)
 import State exposing (State)
 import Test exposing (..)
 import Unit.Money as Money
@@ -14,7 +14,7 @@ import Unit.Unit as Unit
 -}
 orderSequence1 : Future
 orderSequence1 =
-    OrderSequence.fromList [ ( 0, 2 ), ( 3, 5 ) ]
+    Future.fromList [ ( 0, 2 ), ( 3, 5 ) ]
 
 
 {-| 10 units on hand on day 0

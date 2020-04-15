@@ -1,5 +1,6 @@
 module Style exposing
     ( button
+    , charcoal
     , controlPanel
     , dashboard
     , endColor
@@ -9,6 +10,8 @@ module Style exposing
     , mainColumn
     , paleBlue
     , pausedColor
+    , rowA
+    , rowB
     , selectedButton
     , titleColor
     , whiteColor
@@ -80,6 +83,11 @@ selectedButton =
     ]
 
 
+charcoal : Color
+charcoal =
+    rgb255 40 40 40
+
+
 lightColor : Color
 lightColor =
     rgb255 200 200 200
@@ -88,6 +96,16 @@ lightColor =
 whiteColor : Color
 whiteColor =
     rgb255 220 220 220
+
+
+rowA : Color
+rowA =
+    rgb255 255 245 182
+
+
+rowB : Color
+rowB =
+    rgb255 239 192 112
 
 
 lightBlue : Color

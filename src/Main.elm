@@ -11,9 +11,9 @@ import Cmd.Extra exposing (withCmd, withCmds, withNoCmd)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Font as Font
+import Future exposing (Future)
 import Html exposing (Html)
 import List.Extra
-import OrderSequence exposing (Future)
 import SimpleGraph exposing (Option(..))
 import State exposing (State)
 import Style
@@ -78,14 +78,22 @@ type alias Flags =
     {}
 
 
-init : Flags -> ( Model, Cmd Msg )
-init flags =
-    { world = World.init State.initialState OrderSequence.orderSequence1
+initialModel =
+    { world = World.init State.initialState Future.futureV1
     , history = [ State.initialState ]
     , runState = Paused
     , counter = 0
     }
-        |> withNoCmd
+
+
+bareInit : ( Model, Cmd Msg )
+bareInit =
+    initialModel |> withNoCmd
+
+
+init : Flags -> ( Model, Cmd Msg )
+init flags =
+    bareInit
 
 
 subscriptions model =
@@ -102,18 +110,27 @@ update msg model =
             model |> withNoCmd
 
         Step ->
-            let
-                newWorld =
-                    World.update model.world
-            in
-            { model
-                | world = newWorld
-                , history = newWorld.state :: model.history
-            }
-                |> withNoCmd
+            case Future.length model.world.future > 0 of
+                True ->
+                    updateWorld model |> withNoCmd
+
+                False ->
+                    model |> withNoCmd
 
         Reset ->
-            model |> withNoCmd
+            initialModel |> withNoCmd
+
+
+updateWorld : Model -> Model
+updateWorld model =
+    let
+        newWorld =
+            World.update model.world
+    in
+    { model
+        | world = newWorld
+        , history = newWorld.state :: model.history
+    }
 
 
 
@@ -132,12 +149,43 @@ mainColumn : Model -> Element Msg
 mainColumn model =
     column Style.mainColumn
         [ el [ centerX, Font.bold, Font.color Style.lightColor, paddingEach { emptyPadding | top = 30 } ] (text "State")
-        , column [ centerX, spacing 5, padding 20, Background.color Style.lightColor, width (px 1000) ]
+        , column [ centerX, spacing 5, padding 20, Background.color Style.charcoal, width (px 1020) ]
             (viewHistory model.history
-                ++ [ stepButton ]
+                ++ [ row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ resetButton, stepButton ] ]
+                ++ [ row [ paddingEach { emptyPadding | top = 20 } ] [ legend ] ]
             )
         , footer model
         ]
+
+
+legend =
+    row [ spacing 8, Font.color Style.lightColor ]
+        (List.map legendFormatter legendItems)
+
+
+legendItems =
+    [ "t: time"
+    , "|"
+    , "fi: Fiat balance"
+    , "|"
+    , "cc: CC balance"
+    , "|"
+    , "st: Stock"
+    , "|"
+    , "of: Orders filled"
+    , "|"
+    , "ol: Orders lost"
+    , "|"
+    , "OO: Original order"
+    , "|"
+    , "CO: customer order"
+    , "|"
+    , "BO: business order"
+    ]
+
+
+legendFormatter str =
+    el [ Font.size 14 ] (text str)
 
 
 emptyPadding =
@@ -145,7 +193,7 @@ emptyPadding =
 
 
 stringFormatter s =
-    el [ Font.size 12, alignRight, width (px 20) ] (text s)
+    el [ Font.size 12, width (px 20), paddingEach { emptyPadding | right = 4 } ] (el [ alignRight ] (text s))
 
 
 viewState : State -> Element Msg
@@ -153,9 +201,11 @@ viewState state =
     column [ width (px 20) ] (List.map stringFormatter (State.stringVal state))
 
 
-labels4 : Element msg
-labels4 =
-    column [ spacing 4, width (px 20) ] (List.map stringFormatter State.labels)
+
+--
+--labels4 : Element msg
+--labels4 =
+--    column [ spacing 4, width (px 20) ] (List.map stringFormatter State.labels)
 
 
 labels =
@@ -166,10 +216,10 @@ bg : Int -> Attr decorative msg
 bg k =
     case modBy 2 k == 0 of
         True ->
-            Background.color Style.paleBlue
+            Background.color Style.rowA
 
         False ->
-            Background.color Style.whiteColor
+            Background.color Style.rowB
 
 
 viewHistory : List State -> List (Element msg)
@@ -184,6 +234,13 @@ viewHistory states =
 
 stepButton =
     Button.make Step "Step"
+        |> Button.withWidth (Bounded 100)
+        |> Button.withSelected False
+        |> Button.toElement
+
+
+resetButton =
+    Button.make Reset "Reset"
         |> Button.withWidth (Bounded 100)
         |> Button.withSelected False
         |> Button.toElement
