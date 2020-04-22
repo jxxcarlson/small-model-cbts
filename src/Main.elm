@@ -18,6 +18,7 @@ import SimpleGraph exposing (Option(..))
 import State exposing (State)
 import Style
 import Time
+import Unit.Time as UT
 import Widget.Button as Button exposing (Size(..))
 import Widget.Style as WS
 import Widget.TextField as TextField
@@ -149,36 +150,78 @@ mainColumn : Model -> Element Msg
 mainColumn model =
     column Style.mainColumn
         [ el [ centerX, Font.bold, Font.color Style.lightColor, paddingEach { emptyPadding | top = 30 } ] (text "State")
-        , column [ centerX, spacing 5, padding 20, Background.color Style.charcoal, width (px 1020) ]
-            (viewHistory model.history
-                ++ [ row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ resetButton, stepButton ] ]
-                ++ [ row [ paddingEach { emptyPadding | top = 20 } ] [ legend ] ]
-            )
+        , row [ spacing 12 ] [ viewHistory_ model, viewLog model ]
         , footer model
         ]
 
 
+viewHistory_ model =
+    column [ centerX, alignTop, spacing 5, padding 20, Background.color Style.charcoal, width (px 800) ]
+        (viewHistory model.history
+            ++ [ row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ resetButton, stepButton ] ]
+            ++ [ row [ paddingEach { emptyPadding | top = 20 } ] [ legend ] ]
+        )
+
+
+viewLog : Model -> Element Msg
+viewLog model =
+    column
+        [ spacing 6
+        , width (px 400)
+        , height (px 650)
+        , Background.color Style.whiteColor
+        , alignTop
+        , scrollbarY
+        , paddingXY 12 12
+        ]
+        (List.map viewMessage (List.reverse <| State.log model.world.state))
+
+
+viewMessage : ( UT.Time, String, String ) -> Element Msg
+viewMessage ( t, m, note ) =
+    row [ Font.size 12 ]
+        [ el [ width (px 25), alignRight ] (text (UT.stringVal <| UT.increment t))
+        , el [ width (px 150) ] (text m)
+        , el [ width (px 100) ] (text note)
+        ]
+
+
 legend =
+    column [ spacing 8 ]
+        [ row [] [ legend1 ]
+        , row [] [ legend2 ]
+        ]
+
+
+legend1 =
     row [ spacing 8, Font.color Style.lightColor ]
-        (List.map legendFormatter legendItems)
+        (List.map legendFormatter legendItems1)
 
 
-legendItems =
-    [ "t: time"
+legend2 =
+    row [ spacing 8, Font.color Style.lightColor ]
+        (List.map legendFormatter legendItems2)
+
+
+legendItems1 =
+    [ "T: time"
     , "|"
-    , "fi: Fiat balance"
+    , "FI: Fiat balance"
     , "|"
-    , "cc: CC balance"
+    , "CC: CC balance"
     , "|"
-    , "st: Stock"
+    , "ST: Stock"
     , "|"
-    , "of: Orders filled"
+    , "OF: Orders filled"
     , "|"
-    , "ol: Orders lost"
+    , "OL: Orders lost"
     , "|"
     , "OO: Original order"
-    , "|"
-    , "CO: customer order"
+    ]
+
+
+legendItems2 =
+    [ "CO: customer order"
     , "|"
     , "BO: business order"
     ]
@@ -199,13 +242,6 @@ stringFormatter s =
 viewState : State -> Element Msg
 viewState state =
     column [ width (px 20) ] (List.map stringFormatter (State.stringVal state))
-
-
-
---
---labels4 : Element msg
---labels4 =
---    column [ spacing 4, width (px 20) ] (List.map stringFormatter State.labels)
 
 
 labels =

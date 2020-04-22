@@ -28,6 +28,7 @@ mainColumn =
     , spacing 10
     , width fill
     , height fill
+    , paddingXY 20 0
     ]
 
 

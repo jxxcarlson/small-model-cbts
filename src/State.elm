@@ -8,6 +8,7 @@ module State exposing
     , initial
     , initialState
     , labels
+    , log
     , orderSupplies
     , ordersFilled
     , ordersLost
@@ -55,10 +56,10 @@ type State
         , ordersFilled : Unit
         , ordersLost : Unit
         , seed : Random.Seed
-        , messages : Messages
         , orderPlaced : Unit
         , customerOrder : Unit
         , businessOrder : Unit
+        , log : List ( Time, String, String )
         }
 
 
@@ -72,7 +73,7 @@ update itemOrder state =
 
 labels : List String
 labels =
-    [ "t", "fi", "cc", "st", "of", "ol", "OO", "CO", "BO" ]
+    [ "T", "FI", "CC", "ST", "OF", "OL", "OO", "CO", "BO" ]
 
 
 stringVal : State -> List String
@@ -105,10 +106,10 @@ initial =
         , ordersFilled = Unit.create 0
         , ordersLost = Unit.create 0
         , seed = Random.initialSeed 1234
-        , messages = Message.init 5
         , orderPlaced = Unit.create 0
         , customerOrder = Unit.create 0
         , businessOrder = Unit.create 0
+        , log = []
         }
 
 
@@ -182,13 +183,13 @@ orderSupplies ((State data) as state) =
                     Unit.itemsFor config.unitCost totalOrder
 
                 message =
-                    "ORDER (t, fiat, cc)    : ("
-                        ++ Time.stringVal (timeOf state)
-                        ++ ", "
+                    ( timeOf state, message_, "" )
+
+                message_ =
+                    "ORDER "
                         ++ Money.stringVal fiatOrderAmount
                         ++ ", "
                         ++ Money.stringVal ccOrderAmount
-                        ++ ")"
             in
             State
                 { data
@@ -196,10 +197,8 @@ orderSupplies ((State data) as state) =
                     , ccBalance = Money.sub (ccBalance state) ccOrderAmount
                     , fiatBalance = Money.sub (fiatBalance state) fiatOrderAmount
                     , stock = Unit.add (stockOnHand state) actualOrderAmount
-                    , ordersFilled = Unit.add actualOrderAmount (ordersFilled state)
-                    , ordersLost = Unit.add (Unit.sub orderQuantity actualOrderAmount) (ordersLost state)
-                    , messages = Message.push message data.messages
                     , businessOrder = actualOrderAmount
+                    , log = message :: data.log
                 }
 
 
@@ -230,14 +229,19 @@ fillCustomerOrder itemOrder ((State data) as state) =
         ordersLost_ =
             Unit.add (ordersLost state) currentOrderLoss
 
+        ordersLostMessage =
+            case Unit.value currentOrderLoss /= 0 of
+                True ->
+                    "LOST: " ++ Unit.stringVal currentOrderLoss
+
+                False ->
+                    ""
+
         message =
-            "BUY (t, filled, lost) = ("
-                ++ Time.stringVal (timeOf state)
-                ++ ", "
-                ++ Unit.stringVal ordersFilled_
-                ++ ", "
-                ++ Unit.stringVal ordersLost_
-                ++ ")"
+            ( timeOf state, message_, ordersLostMessage )
+
+        message_ =
+            "BUY " ++ Unit.stringVal actualOrder
     in
     State
         { data
@@ -247,7 +251,7 @@ fillCustomerOrder itemOrder ((State data) as state) =
             , stock = Unit.sub (stockOnHand state) actualOrder
             , orderPlaced = currentOrder
             , customerOrder = actualOrder
-            , messages = Message.push message data.messages
+            , log = message :: data.log
         }
 
 
@@ -288,6 +292,11 @@ ordersFilled (State data) =
 ordersLost : State -> Unit
 ordersLost (State data) =
     data.ordersLost
+
+
+log : State -> List ( Time, String, String )
+log (State data) =
+    data.log
 
 
 
