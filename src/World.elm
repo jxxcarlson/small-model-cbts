@@ -1,5 +1,6 @@
 module World exposing (World, init, update)
 
+import Config exposing (Config)
 import Future exposing (Future)
 import State exposing (State)
 
@@ -15,8 +16,8 @@ init state future =
     { state = state, future = future }
 
 
-update : World -> World
-update world =
+update : Config -> World -> World
+update config world =
     case Future.head world.future of
         Nothing ->
             world
@@ -24,7 +25,7 @@ update world =
         Just itemOrder ->
             let
                 newState =
-                    State.update itemOrder world.state
+                    State.update config itemOrder world.state
 
                 future =
                     Future.tail world.future

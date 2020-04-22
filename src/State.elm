@@ -38,6 +38,7 @@ of insufficient supply), etc.
 
 -}
 
+import Config exposing (Config, default)
 import Future exposing (Future)
 import Message exposing (Messages)
 import Order exposing (ItemOrder)
@@ -63,11 +64,11 @@ type State
         }
 
 
-update : ItemOrder -> State -> State
-update itemOrder state =
+update : Config -> ItemOrder -> State -> State
+update config itemOrder state =
     state
-        |> orderSupplies
-        |> fillCustomerOrder itemOrder
+        |> orderSupplies config
+        |> fillCustomerOrder config itemOrder
         |> incrementTime
 
 
@@ -96,6 +97,14 @@ initialState =
         |> addToStock (Unit.create 10)
 
 
+initialStateWithConfig : Config -> State
+initialStateWithConfig c =
+    initial
+        |> addToStock c.initialStock
+        |> addToFiatBalance c.initialFiatBalance
+        |> addToCCBalance c.initialCCBalance
+
+
 initial : State
 initial =
     State
@@ -113,27 +122,6 @@ initial =
         }
 
 
-type alias Config =
-    { unitCost : UnitCost
-    , unitPrice : UnitCost
-    , stockOnHandThreshold : Unit
-    , lowOrder : Unit
-    , highOrder : Unit
-    , ccOrderMax : Money
-    }
-
-
-config : Config
-config =
-    { unitCost = Unit.unitCost 1.0
-    , unitPrice = Unit.unitCost 2.0
-    , stockOnHandThreshold = Unit.create 10
-    , lowOrder = Unit.create 5
-    , highOrder = Unit.create 20
-    , ccOrderMax = Money.create 5
-    }
-
-
 {-|
 
     Steps to determine order data
@@ -143,8 +131,8 @@ config =
     3. The actual
 
 -}
-orderSupplies : State -> State
-orderSupplies ((State data) as state) =
+orderSupplies : Config -> State -> State
+orderSupplies config ((State data) as state) =
     let
         t_ =
             timeOf state
@@ -203,8 +191,8 @@ orderSupplies ((State data) as state) =
 
 
 {-| -}
-fillCustomerOrder : ItemOrder -> State -> State
-fillCustomerOrder itemOrder ((State data) as state) =
+fillCustomerOrder : Config -> ItemOrder -> State -> State
+fillCustomerOrder config itemOrder ((State data) as state) =
     let
         currentOrder : Unit
         currentOrder =
@@ -316,6 +304,11 @@ incrementTime (State data) =
 addToFiatBalance : Money -> State -> State
 addToFiatBalance fc (State data) =
     State { data | fiatBalance = Money.add fc data.fiatBalance }
+
+
+addToCCBalance : Money -> State -> State
+addToCCBalance fc (State data) =
+    State { data | ccBalance = Money.add fc data.ccBalance }
 
 
 addToStock : Unit -> State -> State

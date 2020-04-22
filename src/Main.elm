@@ -8,6 +8,7 @@ module Main exposing (..)
 
 import Browser
 import Cmd.Extra exposing (withCmd, withCmds, withNoCmd)
+import Config exposing (Config)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Font as Font
@@ -41,6 +42,7 @@ main =
 type alias Model =
     { world : World
     , history : List State
+    , config : Config
     , runState : RunState
     , counter : Int
     }
@@ -82,6 +84,7 @@ type alias Flags =
 initialModel =
     { world = World.init State.initialState Future.futureV1
     , history = [ State.initialState ]
+    , config = Config.default
     , runState = Paused
     , counter = 0
     }
@@ -113,7 +116,7 @@ update msg model =
         Step ->
             case Future.length model.world.future > 0 of
                 True ->
-                    updateWorld model |> withNoCmd
+                    updateWorld model.config model |> withNoCmd
 
                 False ->
                     model |> withNoCmd
@@ -122,11 +125,11 @@ update msg model =
             initialModel |> withNoCmd
 
 
-updateWorld : Model -> Model
-updateWorld model =
+updateWorld : Config -> Model -> Model
+updateWorld config model =
     let
         newWorld =
-            World.update model.world
+            World.update config model.world
     in
     { model
         | world = newWorld
@@ -135,10 +138,7 @@ updateWorld model =
 
 
 
--- HELPER
---
 -- VIEW
---
 
 
 view : Model -> Html Msg
