@@ -150,8 +150,14 @@ mainColumn : Model -> Element Msg
 mainColumn model =
     column Style.mainColumn
         [ el [ centerX, Font.bold, Font.color Style.lightColor, paddingEach { emptyPadding | top = 30 } ] (text "State")
-        , row [ spacing 12 ] [ viewHistory_ model, viewLog model ]
+        , row [ spacing 12 ] [ viewHistoryAndConfiguration model, viewLog model ]
         , footer model
+        ]
+
+
+viewHistoryAndConfiguration model =
+    row [ spacing 8 ]
+        [ viewHistory_ model
         ]
 
 
