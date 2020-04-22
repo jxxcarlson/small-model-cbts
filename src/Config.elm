@@ -38,11 +38,11 @@ configurations =
 
 
 config1 =
-    { default | name = "Initial Fiat Balance 20", initialFiatBalance = Money.create 20 }
+    { default | name = "Initial Fiat Balance 8", initialFiatBalance = Money.create 8 }
 
 
 config2 =
-    { default | name = "Initial CC Balance 20", initialCCBalance = Money.create 20 }
+    { default | name = "Initial CC Balance 8", initialCCBalance = Money.create 8 }
 
 
 type alias LabeledItem =

@@ -77,6 +77,7 @@ type Msg
     | Step
     | Reset
     | CycleConfig
+    | Run
 
 
 type alias Flags =
@@ -133,6 +134,13 @@ update msg model =
                 False ->
                     model |> withNoCmd
 
+        Run ->
+            let
+                newModel =
+                    runWorld model.config model
+            in
+            newModel |> withNoCmd
+
         Reset ->
             initialModel model.configurationIndex |> withNoCmd
 
@@ -160,6 +168,15 @@ updateWorld config model =
     }
 
 
+runWorld : Config -> Model -> Model
+runWorld config model =
+    let
+        n =
+            Future.length model.world.future - 1
+    in
+    List.foldl (\n_ model_ -> updateWorld config model_) model (List.range 0 n)
+
+
 
 -- VIEW
 
@@ -172,7 +189,7 @@ view model =
 mainColumn : Model -> Element Msg
 mainColumn model =
     column Style.mainColumn
-        [ el [ centerX, Font.bold, Font.color Style.lightColor, paddingEach { emptyPadding | top = 30 } ] (text "State")
+        [ el [ centerX, Font.bold, Font.color Style.lightColor, paddingEach { emptyPadding | top = 30 } ] (text "Simple Simulator")
         , row [ spacing 12 ] [ viewHistoryAndConfiguration model, viewLog model ]
         , footer model
         ]
@@ -201,7 +218,7 @@ viewConfiguration model =
 viewHistory_ model =
     column [ centerX, alignTop, spacing 5, padding 20, Background.color Style.charcoal, width (px 800) ]
         (viewHistory model.history
-            ++ [ row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ cycleConfigsButton model, resetButton, stepButton ] ]
+            ++ [ row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ cycleConfigsButton model, resetButton, stepButton, runButton ] ]
             ++ [ row [ paddingEach { emptyPadding | top = 20 } ] [ legend ] ]
         )
 
@@ -320,6 +337,13 @@ viewHistory states =
 
 stepButton =
     Button.make Step "Step"
+        |> Button.withWidth (Bounded 100)
+        |> Button.withSelected False
+        |> Button.toElement
+
+
+runButton =
+    Button.make Run "Run"
         |> Button.withWidth (Bounded 100)
         |> Button.withSelected False
         |> Button.toElement
