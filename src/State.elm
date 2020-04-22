@@ -140,7 +140,8 @@ orderSupplies config ((State data) as state) =
     in
     case Unit.lt (stockOnHand state) config.stockOnHandThreshold of
         False ->
-            state
+            State
+                { data | businessOrder = Unit.create 0 }
 
         True ->
             let
@@ -179,6 +180,8 @@ orderSupplies config ((State data) as state) =
                         ++ Money.stringVal fiatOrderAmount
                         ++ ", "
                         ++ Money.stringVal ccOrderAmount
+                        ++ ", "
+                        ++ Unit.stringVal actualOrderAmount
             in
             State
                 { data
