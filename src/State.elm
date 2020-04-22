@@ -7,6 +7,7 @@ module State exposing
     , incrementTime
     , initial
     , initialState
+    , initialStateWithConfig
     , labels
     , log
     , orderSupplies

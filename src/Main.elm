@@ -8,7 +8,7 @@ module Main exposing (..)
 
 import Browser
 import Cmd.Extra exposing (withCmd, withCmds, withNoCmd)
-import Config exposing (Config)
+import Config exposing (Config, LabeledItem, configurations)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Font as Font
@@ -43,6 +43,7 @@ type alias Model =
     { world : World
     , history : List State
     , config : Config
+    , configurationIndex : Int
     , runState : RunState
     , counter : Int
     }
@@ -75,29 +76,40 @@ type Msg
     | Tick Time.Posix
     | Step
     | Reset
+    | CycleConfig
 
 
 type alias Flags =
     {}
 
 
-initialModel =
-    { world = World.init State.initialState Future.futureV1
-    , history = [ State.initialState ]
-    , config = Config.default
+getConfig : Int -> Config
+getConfig k =
+    List.Extra.getAt k configurations |> Maybe.withDefault Config.default |> Debug.log "CONFIG"
+
+
+initialModel k =
+    let
+        initialState =
+            State.initialStateWithConfig <| getConfig k
+    in
+    { world = World.init initialState Future.futureV1
+    , history = [ initialState ]
+    , config = getConfig k
+    , configurationIndex = k
     , runState = Paused
     , counter = 0
     }
 
 
-bareInit : ( Model, Cmd Msg )
-bareInit =
-    initialModel |> withNoCmd
+bareInit : Int -> ( Model, Cmd Msg )
+bareInit k =
+    initialModel k |> withNoCmd
 
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    bareInit
+    bareInit 0
 
 
 subscriptions model =
@@ -122,7 +134,18 @@ update msg model =
                     model |> withNoCmd
 
         Reset ->
-            initialModel |> withNoCmd
+            initialModel model.configurationIndex |> withNoCmd
+
+        CycleConfig ->
+            let
+                k =
+                    if model.configurationIndex + 1 >= List.length configurations then
+                        0
+
+                    else
+                        model.configurationIndex + 1
+            in
+            initialModel k |> withNoCmd
 
 
 updateWorld : Config -> Model -> Model
@@ -156,15 +179,29 @@ mainColumn model =
 
 
 viewHistoryAndConfiguration model =
-    row [ spacing 8 ]
+    column [ spacing 8, alignTop ]
         [ viewHistory_ model
+        , viewConfiguration model
         ]
+
+
+viewConfiguration : Model -> Element Msg
+viewConfiguration model =
+    let
+        viewConfigItem : LabeledItem -> Element Msg
+        viewConfigItem data =
+            row [ spacing 12, Font.size 12 ]
+                [ el [ width (px 100), Font.bold ] (text data.label)
+                , el [ width (px 250) ] (text data.value)
+                ]
+    in
+    column [ paddingXY 12 8, spacing 8, width (px 800), alignTop, Background.color Style.lightColor ] (List.map viewConfigItem (Config.stringValue model.config))
 
 
 viewHistory_ model =
     column [ centerX, alignTop, spacing 5, padding 20, Background.color Style.charcoal, width (px 800) ]
         (viewHistory model.history
-            ++ [ row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ resetButton, stepButton ] ]
+            ++ [ row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ cycleConfigsButton model, resetButton, stepButton ] ]
             ++ [ row [ paddingEach { emptyPadding | top = 20 } ] [ legend ] ]
         )
 
@@ -256,12 +293,19 @@ labels =
 
 bg : Int -> Attr decorative msg
 bg k =
-    case modBy 2 k == 0 of
-        True ->
-            Background.color Style.rowA
+    if k == 3 || k == 6 then
+        Background.color Style.rowX
 
-        False ->
-            Background.color Style.rowB
+    else if k == 5 then
+        Background.color Style.rowY
+
+    else
+        case modBy 2 k == 0 of
+            True ->
+                Background.color Style.rowA
+
+            False ->
+                Background.color Style.rowB
 
 
 viewHistory : List State -> List (Element msg)
@@ -284,6 +328,13 @@ stepButton =
 resetButton =
     Button.make Reset "Reset"
         |> Button.withWidth (Bounded 100)
+        |> Button.withSelected False
+        |> Button.toElement
+
+
+cycleConfigsButton model =
+    Button.make CycleConfig ("Cycle Config (" ++ String.fromInt model.configurationIndex ++ ")")
+        |> Button.withWidth (Bounded 120)
         |> Button.withSelected False
         |> Button.toElement
 

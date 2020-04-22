@@ -1,4 +1,4 @@
-module Config exposing (Config, default)
+module Config exposing (Config, LabeledItem, configurations, default, stringValue)
 
 import Unit.Money as Money exposing (Money)
 import Unit.Unit as Unit exposing (Unit, UnitCost)
@@ -33,18 +33,32 @@ default =
     }
 
 
+configurations =
+    [ default, config1, config2 ]
 
---configurations =
---    [ config1, config2 ]
---
---
---stringValue : Config -> List { label : String, value : String }
---stringValue data =
---    [ { label = "Configuration", value = data.name }
---    , { label = "Stock", value = Unit.stringVal data.initialStock }
---    , { label = "Fiat balance", value = Money.stringVal data.initialFiatBalance }
---    , { label = "CC balance", value = Money.stringVal data.initialCCBalance }
---    ]
+
+config1 =
+    { default | name = "Initial Fiat Balance 20", initialFiatBalance = Money.create 20 }
+
+
+config2 =
+    { default | name = "Initial CC Balance 20", initialCCBalance = Money.create 20 }
+
+
+type alias LabeledItem =
+    { label : String, value : String }
+
+
+stringValue : Config -> List LabeledItem
+stringValue data =
+    [ { label = "Configuration", value = data.name }
+    , { label = "Stock", value = Unit.stringVal data.initialStock }
+    , { label = "Fiat balance", value = Money.stringVal data.initialFiatBalance }
+    , { label = "CC balance", value = Money.stringVal data.initialCCBalance }
+    ]
+
+
+
 --
 --
 --config1 =

@@ -12,6 +12,8 @@ module Style exposing
     , pausedColor
     , rowA
     , rowB
+    , rowX
+    , rowY
     , selectedButton
     , titleColor
     , whiteColor
@@ -102,6 +104,16 @@ whiteColor =
 rowA : Color
 rowA =
     rgb255 255 245 182
+
+
+rowX : Color
+rowX =
+    rgb255 255 100 182
+
+
+rowY : Color
+rowY =
+    rgb255 100 182 255
 
 
 rowB : Color
