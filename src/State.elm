@@ -4,6 +4,7 @@ module State exposing
     , addToStock
     , fiatBalance
     , fillCustomerOrder
+    , getBusinessOrder
     , incrementTime
     , initial
     , initialState
@@ -16,6 +17,7 @@ module State exposing
     , setTime
     , stockOnHand
     , stringVal
+    , sumRowOfUnits
     , timeOf
     , update
     )
@@ -41,6 +43,8 @@ of insufficient supply), etc.
 
 import Config exposing (Config, default)
 import Future exposing (Future)
+import List.Extra
+import Maybe.Extra
 import Message exposing (Messages)
 import Order exposing (ItemOrder)
 import Random
@@ -63,6 +67,11 @@ type State
         , businessOrder : Unit
         , log : List ( Time, String, String )
         }
+
+
+getBusinessOrder : State -> Unit
+getBusinessOrder (State data) =
+    data.businessOrder
 
 
 update : Config -> ItemOrder -> State -> State
@@ -336,3 +345,24 @@ mapWithState f ( state, list ) =
             ( newState_, item_ :: list_ )
     in
     List.foldl folder ( state, [] ) list
+
+
+getRowOfUnits : (State -> Unit) -> List State -> List Unit
+getRowOfUnits getField stateList =
+    List.map getField stateList
+
+
+sumRowOfUnits : (State -> Unit) -> List State -> Unit
+sumRowOfUnits getField stateList =
+    List.foldl Unit.add (Unit.create 0) (getRowOfUnits getField stateList)
+
+
+
+--  |> Maybe.Extra.valuesnitRowSummary : Int -> List State -> Unit
+--unitRowSummary row stateList =
+--   let
+--      adder : state -> Unit -> Unit
+--      adder state u =
+--          (List.Extra.getAt row state |> )
+--   in
+--   List.foldl adder (Unit.create 0) stateList

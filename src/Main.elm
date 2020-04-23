@@ -20,6 +20,7 @@ import State exposing (State)
 import Style
 import Time
 import Unit.Time as UT
+import Unit.Unit as Unit exposing (Unit)
 import Widget.Button as Button exposing (Size(..))
 import Widget.Style as WS
 import Widget.TextField as TextField
@@ -199,7 +200,22 @@ viewHistoryAndConfiguration model =
     column [ spacing 8, alignTop ]
         [ viewHistory_ model
         , viewConfiguration model
+        , viewResults model
         ]
+
+
+viewResults : Model -> Element Msg
+viewResults model =
+    let
+        viewUnit : String -> Unit -> Element Msg
+        viewUnit str u =
+            row [ spacing 8 ]
+                [ el [ width (px 100), Font.bold ] (text str)
+                , el [ width (px 100) ] (text <| String.fromInt <| Unit.value u)
+                ]
+    in
+    column [ Font.size 12, paddingXY 12 8, spacing 8, width (px 800), alignTop, Background.color Style.lightColor ]
+        [ viewUnit "Business Orders" (State.sumRowOfUnits State.getBusinessOrder model.history) ]
 
 
 viewConfiguration : Model -> Element Msg

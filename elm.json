@@ -13,6 +13,7 @@
             "elm/random": "1.0.0",
             "elm/time": "1.0.0",
             "elm-community/list-extra": "8.2.3",
+            "elm-community/maybe-extra": "5.2.0",
             "folkertdev/elm-deque": "3.0.1",
             "jxxcarlson/elm-graph": "3.0.0",
             "jxxcarlson/elm-widget": "1.0.0",
