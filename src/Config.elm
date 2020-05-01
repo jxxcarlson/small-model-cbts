@@ -12,6 +12,7 @@ type alias Config =
     , lowOrder : Unit
     , highOrder : Unit
     , ccOrderMax : Money
+    , ccRatio : Float
     , initialStock : Unit
     , initialFiatBalance : Money
     , initialCCBalance : Money
@@ -27,7 +28,8 @@ default =
     , lowOrder = Unit.create 5
     , highOrder = Unit.create 20
     , ccOrderMax = Money.create 5
-    , initialStock = Unit.create 10
+    , initialStock = Unit.create 0
+    , ccRatio = 0
     , initialFiatBalance = Money.create 0
     , initialCCBalance = Money.create 0
     }

@@ -2,6 +2,7 @@ module State exposing
     ( State
     , addToFiatBalance
     , addToStock
+    , ccBalance
     , fiatBalance
     , fillCustomerOrder
     , getBusinessOrder
@@ -62,6 +63,7 @@ type State
         { t : Time
         , fiatBalance : Money
         , ccBalance : Money
+        , ccRatio : Float
         , stock : Unit
         , ordersFilled : Unit
         , ordersLost : Unit
@@ -146,9 +148,12 @@ initialState =
 initialStateWithConfig : Config -> State
 initialStateWithConfig c =
     initial
+        |> Debug.log "INITIAL"
         |> addToStock c.initialStock
         |> addToFiatBalance c.initialFiatBalance
         |> addToCCBalance c.initialCCBalance
+        |> setCCRatio c.ccRatio
+        |> Debug.log "FINAL"
 
 
 initial : State
@@ -157,6 +162,7 @@ initial =
         { t = Time.create 0
         , fiatBalance = Money.create 0
         , ccBalance = Money.create 0
+        , ccRatio = 0
         , stock = Unit.create 0
         , ordersFilled = Unit.create 0
         , ordersLost = Unit.create 0
@@ -262,11 +268,11 @@ orderSupplies2 config ((State data) as state) =
                     Unit.costOf config.unitCost orderQuantity
 
                 ccAvailable =
-                    Money.min config.ccOrderMax (ccBalance state)
+                    ccBalance state
 
                 ccOrderAmount : Money
                 ccOrderAmount =
-                    Money.min ccAvailable (Money.mulBy 0.1 orderCost |> Money.roundTo 0)
+                    Money.min ccAvailable (Money.mulBy data.ccRatio orderCost |> Money.roundTo 0)
 
                 fiatOrderAmount : Money
                 fiatOrderAmount =
@@ -463,6 +469,11 @@ incrementTime (State data) =
 addToFiatBalance : Money -> State -> State
 addToFiatBalance fc (State data) =
     State { data | fiatBalance = Money.add fc data.fiatBalance }
+
+
+setCCRatio : Float -> State -> State
+setCCRatio ccRatio (State data) =
+    State { data | ccRatio = ccRatio }
 
 
 addToCCBalance : Money -> State -> State

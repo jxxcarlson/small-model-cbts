@@ -21,6 +21,7 @@ import Stat
 import State exposing (State)
 import Style
 import Time
+import Unit.Money as Money exposing (Money)
 import Unit.Time as UT
 import Unit.Unit as Unit exposing (Unit)
 import Widget.Button as Button exposing (Size(..))
@@ -57,6 +58,20 @@ type alias Model =
     , ccRatioAsString : String
     , initialFiatBalanceAsString : String
     , initialStockAsString : String
+    , lowOrderAsString : String
+    , highOrderAsString : String
+    , thresholdAsString : String
+    }
+
+
+parameters : Model -> Parameters
+parameters m =
+    { fiatBal_ = m.initialFiatBalanceAsString
+    , initialStock_ = m.initialStockAsString
+    , ccEarnings_ = m.ccEarningsAsString
+    , ccRatio_ = m.ccRatioAsString
+    , cycleLength_ = m.cycleLengthAsString
+    , seed_ = m.initialSeedAsString
     }
 
 
@@ -108,41 +123,81 @@ getConfig k =
     List.Extra.getAt k configurations |> Maybe.withDefault Config.default |> Debug.log "CONFIG"
 
 
-initialModel : String -> String -> String -> String -> String -> String -> Int -> Int -> Int -> Model
-initialModel initialFiatBalanceAsString initialStockAsString ccEarningsAsString ccRatioAsString cycleLengthAsString seedAsString k demandMean demandSpread =
+type alias Parameters =
+    { fiatBal_ : String
+    , initialStock_ : String
+    , ccEarnings_ : String
+    , ccRatio_ : String
+    , cycleLength_ : String
+    , seed_ : String
+    }
+
+
+configWithParameters : Parameters -> Config -> Config
+configWithParameters p c =
+    { c
+        | initialStock = Unit.create (String.toInt p.initialStock_ |> Maybe.withDefault 0)
+        , initialFiatBalance = Money.create (String.toFloat p.fiatBal_ |> Maybe.withDefault 0)
+        , initialCCBalance = Money.create (String.toFloat p.ccEarnings_ |> Maybe.withDefault 0)
+        , ccRatio = String.toFloat p.ccRatio_ |> Maybe.withDefault 0
+    }
+
+
+initialParameters =
+    { fiatBal_ = "0"
+    , initialStock_ = "0"
+    , ccEarnings_ = "0"
+    , ccRatio_ = "0"
+    , cycleLength_ = "30"
+    , seed_ = "1234"
+    }
+
+
+initialModel : Parameters -> Int -> Int -> Int -> Model
+initialModel p configIndex demandMean demandSpread =
     let
+        baseConfig =
+            getConfig configIndex
+
+        newConfig =
+            configWithParameters p baseConfig
+
         initialState =
-            State.initialStateWithConfig <| getConfig k
+            Debug.log "INIT STATE" <|
+                State.initialStateWithConfig newConfig
 
         seed =
-            String.toInt seedAsString |> Maybe.withDefault 1234
+            String.toInt p.seed_ |> Maybe.withDefault 1234
 
         demandRunLength =
-            String.toInt cycleLengthAsString |> Maybe.withDefault 30
+            String.toInt p.cycleLength_ |> Maybe.withDefault 30
 
         future =
             Future.generateListWithMean seed demandMean demandSpread demandRunLength
     in
     { world = World.init initialState future
     , history = [ initialState ]
-    , config = getConfig k
-    , configurationIndex = k
+    , config = getConfig configIndex
+    , configurationIndex = configIndex
     , runState = Paused
     , counter = 0
     , demandMean = String.fromInt demandMean
     , demandSpread = String.fromInt demandSpread
-    , initialSeedAsString = seedAsString
-    , cycleLengthAsString = cycleLengthAsString
-    , ccEarningsAsString = ccEarningsAsString
-    , ccRatioAsString = ccRatioAsString
-    , initialFiatBalanceAsString = initialFiatBalanceAsString
-    , initialStockAsString = initialStockAsString
+    , initialSeedAsString = p.seed_
+    , cycleLengthAsString = p.cycleLength_
+    , ccEarningsAsString = p.ccEarnings_
+    , ccRatioAsString = p.ccRatio_
+    , initialFiatBalanceAsString = p.fiatBal_
+    , initialStockAsString = p.initialStock_
+    , lowOrderAsString = "5"
+    , highOrderAsString = "20"
+    , thresholdAsString = "10"
     }
 
 
 bareInit : Int -> ( Model, Cmd Msg )
 bareInit k =
-    initialModel "0" "10" "0" "0" "30" "1234" k 10 5 |> withNoCmd
+    initialModel initialParameters k 10 5 |> withNoCmd
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -180,7 +235,7 @@ update msg model =
                     model.demandSpread |> String.toInt |> Maybe.withDefault 5
 
                 model_ =
-                    initialModel model.initialFiatBalanceAsString model.initialStockAsString model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString model.configurationIndex m s
+                    initialModel (parameters model) model.configurationIndex m s
 
                 newModel =
                     runWorld model_.config model_
@@ -195,7 +250,7 @@ update msg model =
                 s =
                     model.demandSpread |> String.toInt |> Maybe.withDefault 5
             in
-            initialModel model.initialFiatBalanceAsString model.initialStockAsString model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString model.configurationIndex m s |> withNoCmd
+            initialModel (parameters model) model.configurationIndex m s |> withNoCmd
 
         CycleConfig ->
             let
@@ -212,7 +267,7 @@ update msg model =
                 s =
                     model.demandSpread |> String.toInt |> Maybe.withDefault 5
             in
-            initialModel model.initialFiatBalanceAsString model.initialStockAsString model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString k m s |> withNoCmd
+            initialModel (parameters model) k m s |> withNoCmd
 
         EnterDemandMean str ->
             { model | demandMean = str } |> withNoCmd
@@ -280,9 +335,9 @@ mainColumn model =
 
 
 viewHistoryAndConfiguration model =
-    column [ spacing 8, alignTop ]
+    column [ spacing 8, alignTop, Background.color Style.lightColor ]
         [ viewHistory_ model
-        , viewConfiguration model
+        , viewFirstAndLastState model
         , viewResults model
         ]
 
@@ -309,6 +364,14 @@ viewUnit str u =
     row [ spacing 8 ]
         [ el [ width (px 100), Font.bold ] (text str)
         , el [ width (px 100) ] (text <| String.fromInt <| Unit.value u)
+        ]
+
+
+viewMoney : String -> Money -> Element Msg
+viewMoney str u =
+    row [ spacing 8 ]
+        [ el [ width (px 100), Font.bold ] (text str)
+        , el [ width (px 100) ] (text <| String.fromFloat <| Money.value u)
         ]
 
 
@@ -417,6 +480,55 @@ supply model =
     Unit.add initialStock_ ordersPlaced
 
 
+firstState : Model -> Maybe State
+firstState m =
+    m.history
+        |> List.reverse
+        |> List.head
+
+
+lastState : Model -> Maybe State
+lastState m =
+    m.history
+        |> List.head
+
+
+viewFirstAndLastState : Model -> Element Msg
+viewFirstAndLastState m =
+    row [ spacing 24, Font.size 12, paddingXY 12 12 ]
+        [ viewFirstState m
+        , viewLastState m
+        ]
+
+
+viewFirstState : Model -> Element Msg
+viewFirstState m =
+    case firstState m of
+        Nothing ->
+            Element.none
+
+        Just s ->
+            column [ spacing 8 ]
+                [ viewUnit "Initial Stock" (State.stockOnHand s)
+                , viewMoney "Fiat Balance" (State.fiatBalance s)
+                , viewMoney "CC Balance" (State.ccBalance s)
+                ]
+
+
+viewLastState : Model -> Element Msg
+viewLastState m =
+    case lastState m of
+        Nothing ->
+            Element.none
+
+        Just s ->
+            column [ spacing 8 ]
+                [ viewUnit "Final Stock" (State.stockOnHand s)
+                , viewMoney "Fiat Balance" (State.fiatBalance s)
+                , viewMoney "CC Balance" (State.ccBalance s)
+                ]
+
+
 viewConfiguration : Model -> Element Msg
 viewConfiguration model =
     let
@@ -447,6 +559,9 @@ parameters1 model =
         , textField EnterInitialStock model.initialStockAsString "Initial Stock"
         , textField EnterCCEarnings model.ccEarningsAsString "CC earned"
         , textField EnterCCRatio model.ccRatioAsString "CC Ratio"
+        , textField EnterCCRatio model.lowOrderAsString "Low order"
+        , textField EnterCCRatio model.highOrderAsString "High order"
+        , textField EnterCCRatio model.thresholdAsString "Order threshold"
         ]
 
 
@@ -555,7 +670,8 @@ viewHistory states =
         |> List.Extra.transpose
         |> List.map List.reverse
         |> List.map (List.map stringFormatter)
-        |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
+        -- |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
+        |> List.indexedMap (\k r -> showIf True (row [ bg k, spacing 4, padding 4 ] r))
 
 
 showIf : Bool -> Element msg -> Element msg
