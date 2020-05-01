@@ -148,12 +148,10 @@ initialState =
 initialStateWithConfig : Config -> State
 initialStateWithConfig c =
     initial
-        |> Debug.log "INITIAL"
         |> addToStock c.initialStock
         |> addToFiatBalance c.initialFiatBalance
         |> addToCCBalance c.initialCCBalance
         |> setCCRatio c.ccRatio
-        |> Debug.log "FINAL"
 
 
 initial : State

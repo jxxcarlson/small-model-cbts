@@ -126,7 +126,7 @@ type alias Flags =
 
 getConfig : Int -> Config
 getConfig k =
-    List.Extra.getAt k configurations |> Maybe.withDefault Config.default |> Debug.log "CONFIG"
+    List.Extra.getAt k configurations |> Maybe.withDefault Config.default
 
 
 type alias Parameters =
@@ -157,7 +157,7 @@ configWithParameters p c =
 
 initialParameters =
     { fiatBal_ = "0"
-    , initialStock_ = "0"
+    , initialStock_ = "10"
     , ccEarnings_ = "0"
     , ccRatio_ = "0"
     , cycleLength_ = "30"
@@ -175,12 +175,10 @@ initialModel p configIndex demandMean demandSpread =
             getConfig configIndex
 
         newConfig =
-            Debug.log "NEW CONFIG" <|
-                configWithParameters p baseConfig
+            configWithParameters p baseConfig
 
         initialState =
-            Debug.log "INIT STATE" <|
-                State.initialStateWithConfig newConfig
+            State.initialStateWithConfig newConfig
 
         seed =
             String.toInt p.seed_ |> Maybe.withDefault 1234
@@ -695,8 +693,7 @@ viewHistory states =
         |> List.Extra.transpose
         |> List.map List.reverse
         |> List.map (List.map stringFormatter)
-        -- |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
-        |> List.indexedMap (\k r -> showIf True (row [ bg k, spacing 4, padding 4 ] r))
+        |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
 
 
 showIf : Bool -> Element msg -> Element msg
