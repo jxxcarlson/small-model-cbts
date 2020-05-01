@@ -1,7 +1,9 @@
 module Future exposing
     ( Future
     , fromList
+    , futureV0
     , futureV1
+    , generateListWithMean
     , head
     , length
     , stringVal
@@ -12,9 +14,19 @@ module Future exposing
     , zero
     )
 
+import Generate
 import Order exposing (ItemOrder)
 import Unit.Time as Time exposing (Time)
 import Unit.Unit as Unit exposing (Unit)
+
+
+generateListWithMean : Int -> Int -> Int -> Int -> Future
+generateListWithMean seed mean_ spread n =
+    let
+        seq =
+            List.indexedMap (\k item -> ( k, item )) (Generate.positiveListWithMean seed n mean_ spread)
+    in
+    fromList seq
 
 
 {-| Attempt to buy 8 units at time t >= 2
@@ -38,7 +50,7 @@ futureV1 =
         , ( 14, 11 )
         , ( 15, 2 )
         , ( 16, 0 )
-        , ( 17, 20 )
+        , ( 17, 15 )
         , ( 18, 0 )
         , ( 19, 1 )
         , ( 20, 15 )
@@ -51,6 +63,41 @@ futureV1 =
         , ( 27, 0 )
         , ( 28, 4 )
         , ( 29, 15 )
+        ]
+
+
+futureV0 : Future
+futureV0 =
+    fromList
+        [ ( 0, 5 )
+        , ( 1, 5 )
+        , ( 2, 5 )
+        , ( 3, 5 )
+        , ( 4, 5 )
+        , ( 5, 5 )
+        , ( 6, 5 )
+        , ( 7, 5 )
+        , ( 8, 5 )
+        , ( 9, 5 )
+        , ( 10, 5 )
+        , ( 11, 5 )
+        , ( 12, 5 )
+        , ( 14, 5 )
+        , ( 15, 5 )
+        , ( 16, 5 )
+        , ( 17, 5 )
+        , ( 18, 5 )
+        , ( 19, 5 )
+        , ( 20, 5 )
+        , ( 21, 5 )
+        , ( 22, 5 )
+        , ( 23, 5 )
+        , ( 24, 5 )
+        , ( 25, 5 )
+        , ( 26, 5 )
+        , ( 27, 5 )
+        , ( 28, 5 )
+        , ( 29, 5 )
         ]
 
 

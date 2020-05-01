@@ -13,9 +13,11 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Font as Font
 import Future exposing (Future)
+import Generate
 import Html exposing (Html)
 import List.Extra
 import SimpleGraph exposing (Option(..))
+import Stat
 import State exposing (State)
 import Style
 import Time
@@ -23,7 +25,7 @@ import Unit.Time as UT
 import Unit.Unit as Unit exposing (Unit)
 import Widget.Button as Button exposing (Size(..))
 import Widget.Style as WS
-import Widget.TextField as TextField
+import Widget.TextField as TextField exposing (LabelPosition(..))
 import World exposing (World)
 
 
@@ -47,6 +49,9 @@ type alias Model =
     , configurationIndex : Int
     , runState : RunState
     , counter : Int
+    , demandMean : String
+    , demandSpread : String
+    , initialSeed : Int
     }
 
 
@@ -79,6 +84,9 @@ type Msg
     | Reset
     | CycleConfig
     | Run
+    | EnterDemandMean String
+    | EnterDemandSpread String
+    | EnterSeed String
 
 
 type alias Flags =
@@ -90,23 +98,30 @@ getConfig k =
     List.Extra.getAt k configurations |> Maybe.withDefault Config.default |> Debug.log "CONFIG"
 
 
-initialModel k =
+initialModel : Int -> Int -> Int -> Int -> Model
+initialModel k demandMean demandSpread demandRunLength =
     let
         initialState =
             State.initialStateWithConfig <| getConfig k
+
+        future =
+            Future.generateListWithMean 1234 demandMean demandSpread demandRunLength
     in
-    { world = World.init initialState Future.futureV1
+    { world = World.init initialState future
     , history = [ initialState ]
     , config = getConfig k
     , configurationIndex = k
     , runState = Paused
     , counter = 0
+    , demandMean = String.fromInt demandMean
+    , demandSpread = String.fromInt demandSpread
+    , initialSeed = 1234
     }
 
 
 bareInit : Int -> ( Model, Cmd Msg )
 bareInit k =
-    initialModel k |> withNoCmd
+    initialModel k 10 5 30 |> withNoCmd
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -137,13 +152,29 @@ update msg model =
 
         Run ->
             let
+                m =
+                    model.demandMean |> String.toInt |> Maybe.withDefault 10
+
+                s =
+                    model.demandSpread |> String.toInt |> Maybe.withDefault 5
+
+                model_ =
+                    initialModel model.configurationIndex m s 30
+
                 newModel =
-                    runWorld model.config model
+                    runWorld model_.config model_
             in
             newModel |> withNoCmd
 
         Reset ->
-            initialModel model.configurationIndex |> withNoCmd
+            let
+                m =
+                    model.demandMean |> String.toInt |> Maybe.withDefault 10
+
+                s =
+                    model.demandSpread |> String.toInt |> Maybe.withDefault 5
+            in
+            initialModel model.configurationIndex m s 30 |> withNoCmd
 
         CycleConfig ->
             let
@@ -153,8 +184,28 @@ update msg model =
 
                     else
                         model.configurationIndex + 1
+
+                m =
+                    model.demandMean |> String.toInt |> Maybe.withDefault 10
+
+                s =
+                    model.demandSpread |> String.toInt |> Maybe.withDefault 5
             in
-            initialModel k |> withNoCmd
+            initialModel k m s 30 |> withNoCmd
+
+        EnterDemandMean str ->
+            { model | demandMean = str } |> withNoCmd
+
+        EnterDemandSpread str ->
+            { model | demandSpread = str } |> withNoCmd
+
+        EnterSeed str ->
+            let
+                seed : Int
+                seed =
+                    String.toInt str |> Maybe.withDefault 0
+            in
+            { model | initialSeed = seed } |> withNoCmd
 
 
 updateWorld : Config -> Model -> Model
@@ -190,9 +241,10 @@ view model =
 mainColumn : Model -> Element Msg
 mainColumn model =
     column Style.mainColumn
-        [ el [ centerX, Font.bold, Font.color Style.lightColor, paddingEach { emptyPadding | top = 30 } ] (text "Simple Simulator")
+        [ el [ centerX, Font.bold, Font.color Style.lightColor, paddingEach { emptyPadding | top = 15 } ] (text "Simple Simulator")
         , row [ spacing 12 ] [ viewHistoryAndConfiguration model, viewLog model ]
-        , footer model
+
+        -- , footer model
         ]
 
 
@@ -206,16 +258,132 @@ viewHistoryAndConfiguration model =
 
 viewResults : Model -> Element Msg
 viewResults model =
-    let
-        viewUnit : String -> Unit -> Element Msg
-        viewUnit str u =
-            row [ spacing 8 ]
-                [ el [ width (px 100), Font.bold ] (text str)
-                , el [ width (px 100) ] (text <| String.fromInt <| Unit.value u)
-                ]
-    in
     column [ Font.size 12, paddingXY 12 8, spacing 8, width (px 800), alignTop, Background.color Style.lightColor ]
-        [ viewUnit "Business Orders" (State.sumRowOfUnits State.getBusinessOrder model.history) ]
+        [ viewUnit "Business Orders" (State.sumRowOfUnits State.getBusinessOrder model.history)
+        , viewUnit "Orders Lost" (State.getOrdersLost (State.last model.history))
+        , viewStats "Demand"
+            (State.sumRowOfUnits State.getDemand model.history)
+            (meanDemand model |> roundTo 1)
+            (stdevDemand model |> roundTo 1)
+        , viewStats "Supply"
+            (supply model)
+            (meanSupply model |> roundTo 1)
+            (stdevSupply model |> roundTo 1)
+        , viewExcess model
+        ]
+
+
+viewUnit : String -> Unit -> Element Msg
+viewUnit str u =
+    row [ spacing 8 ]
+        [ el [ width (px 100), Font.bold ] (text str)
+        , el [ width (px 100) ] (text <| String.fromInt <| Unit.value u)
+        ]
+
+
+viewFloat : String -> Float -> Element Msg
+viewFloat str u =
+    row [ spacing 8 ]
+        [ el [ width (px 100), Font.bold ] (text str)
+        , el [ width (px 100) ] (text <| String.fromFloat u)
+        ]
+
+
+viewText : String -> String -> Element Msg
+viewText str u =
+    row [ spacing 8 ]
+        [ el [ width (px 100), Font.bold ] (text str)
+        , el [ width (px 100) ] (text u)
+        ]
+
+
+viewStats : String -> Unit -> Float -> Float -> Element Msg
+viewStats str u v w =
+    row [ spacing 8 ]
+        [ el [ width (px 100), Font.bold ] (text str)
+        , el [ width (px 30) ] (text <| String.fromInt <| Unit.value u)
+        , el [ width (px 30) ] (text <| String.fromFloat v)
+        , el [ width (px 30) ] (text <| String.fromFloat w)
+        ]
+
+
+viewExcess model =
+    let
+        d =
+            demand model
+
+        s =
+            supply model
+    in
+    if Unit.gt d s then
+        viewUnit "Excess Demand" (Unit.sub (demand model) (supply model))
+
+    else if Unit.lt d s then
+        viewUnit "Excess Supply" (Unit.sub (supply model) (demand model))
+
+    else
+        viewText "Supply-Demand" "Equilibrium"
+
+
+demand : Model -> Unit
+demand model =
+    State.sumRowOfUnits State.getDemand model.history
+
+
+meanDemand : Model -> Float
+meanDemand model =
+    let
+        xs =
+            List.map (Unit.value << State.getDemand) model.history
+    in
+    Generate.mean xs
+
+
+stdevDemand : Model -> Float
+stdevDemand model =
+    let
+        xs =
+            List.map (toFloat << Unit.value << State.getDemand) model.history
+    in
+    Stat.stdev identity xs |> Maybe.withDefault 0
+
+
+roundTo : Int -> Float -> Float
+roundTo k x =
+    let
+        factor =
+            10 ^ toFloat k
+    in
+    toFloat (round (factor * x)) / factor
+
+
+meanSupply : Model -> Float
+meanSupply model =
+    State.initialStock model.history
+        :: List.map State.getBusinessOrder model.history
+        |> List.map Unit.value
+        |> Generate.mean
+
+
+stdevSupply : Model -> Float
+stdevSupply model =
+    let
+        xs =
+            List.map (toFloat << Unit.value << State.getBusinessOrder) model.history
+    in
+    Stat.stdev identity xs |> Maybe.withDefault 0
+
+
+supply : Model -> Unit
+supply model =
+    let
+        ordersPlaced =
+            State.sumRowOfUnits State.getBusinessOrder model.history
+
+        initialStock_ =
+            State.initialStock model.history
+    in
+    Unit.add initialStock_ ordersPlaced
 
 
 viewConfiguration : Model -> Element Msg
@@ -228,15 +396,25 @@ viewConfiguration model =
                 , el [ width (px 250) ] (text data.value)
                 ]
     in
-    column [ paddingXY 12 8, spacing 8, width (px 800), alignTop, Background.color Style.lightColor ] (List.map viewConfigItem (Config.stringValue model.config))
+    column [ paddingXY 12 8, spacing 8, width (px 800), alignTop, Background.color Style.lightColor ]
+        (List.map viewConfigItem (Config.stringValue model.config))
 
 
 viewHistory_ model =
     column [ centerX, alignTop, spacing 5, padding 20, Background.color Style.charcoal, width (px 800) ]
         (viewHistory model.history
             ++ [ row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ cycleConfigsButton model, resetButton, stepButton, runButton ] ]
+            ++ [ parameters model ]
             ++ [ row [ paddingEach { emptyPadding | top = 20 } ] [ legend ] ]
         )
+
+
+parameters model =
+    row [ spacing 12, paddingEach { emptyPadding | top = 20 }, Font.color Style.whiteColor ]
+        [ -- textField EnterSeed model.initialSeed "Seed"
+          textField EnterDemandMean model.demandMean "Demand mean"
+        , textField EnterDemandSpread model.demandSpread "Demand spread"
+        ]
 
 
 viewLog : Model -> Element Msg
@@ -391,3 +569,10 @@ footer model =
         , height (px 40)
         ]
         []
+
+
+textField msg text label =
+    TextField.make msg text label
+        |> TextField.withHeight 30
+        |> TextField.withLabelPosition LabelAbove
+        |> TextField.toElement

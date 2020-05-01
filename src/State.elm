@@ -5,11 +5,15 @@ module State exposing
     , fiatBalance
     , fillCustomerOrder
     , getBusinessOrder
+    , getDemand
+    , getOrdersLost
     , incrementTime
     , initial
     , initialState
     , initialStateWithConfig
+    , initialStock
     , labels
+    , last
     , log
     , orderSupplies
     , ordersFilled
@@ -69,15 +73,47 @@ type State
         }
 
 
+getDemand : State -> Unit
+getDemand (State data) =
+    data.orderPlaced
+
+
 getBusinessOrder : State -> Unit
 getBusinessOrder (State data) =
     data.businessOrder
+
+
+getOrdersLost : State -> Unit
+getOrdersLost (State data) =
+    data.ordersLost
+
+
+last : List State -> State
+last listOfStates =
+    listOfStates
+        |> List.head
+        |> Maybe.withDefault initialState
+
+
+first : List State -> State
+first listOfStates =
+    listOfStates
+        |> List.reverse
+        |> List.head
+        |> Maybe.withDefault initialState
+
+
+initialStock listOfStates =
+    listOfStates
+        |> first
+        |> stockOnHand
 
 
 update : Config -> ItemOrder -> State -> State
 update config itemOrder state =
     state
         |> orderSupplies config
+        --|> orderSuppliesWithCC config
         |> fillCustomerOrder config itemOrder
         |> incrementTime
 
@@ -201,6 +237,54 @@ orderSupplies config ((State data) as state) =
                     , businessOrder = actualOrderAmount
                     , log = message :: data.log
                 }
+
+
+orderSuppliesWithCC : Config -> State -> State
+orderSuppliesWithCC config ((State data) as state) =
+    case Unit.lt (stockOnHand state) (Unit.create 10) of
+        True ->
+            orderSuppliesWithCC_ config state
+
+        False ->
+            state
+
+
+orderSuppliesWithCC_ : Config -> State -> State
+orderSuppliesWithCC_ config ((State data) as state) =
+    let
+        t_ =
+            timeOf state
+    in
+    let
+        ccAvailable =
+            ccBalance state
+
+        ccForOrder =
+            Money.min (Money.create 100) ccAvailable
+
+        ccOrderAmount =
+            Unit.itemsFor config.unitCost ccForOrder
+
+        message =
+            ( timeOf state, message_, "" )
+
+        message_ =
+            if Unit.gt ccOrderAmount (Unit.create 0) then
+                "CC ORDER "
+                    ++ Money.stringVal ccForOrder
+                    ++ ", "
+                    ++ Unit.stringVal ccOrderAmount
+
+            else
+                ""
+    in
+    State
+        { data
+            | ccBalance = Money.sub (ccBalance state) ccForOrder
+            , stock = Unit.add (stockOnHand state) ccOrderAmount
+            , businessOrder = Unit.add ccOrderAmount (getBusinessOrder state)
+            , log = message :: data.log
+        }
 
 
 {-| -}

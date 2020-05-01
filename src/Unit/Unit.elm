@@ -4,6 +4,7 @@ module Unit.Unit exposing
     , add
     , costOf
     , create
+    , gt
     , itemsFor
     , lt
     , min
@@ -67,6 +68,11 @@ sub ii jj =
 lt : Unit -> Unit -> Bool
 lt a b =
     bareMap2 (<) a b
+
+
+gt : Unit -> Unit -> Bool
+gt a b =
+    bareMap2 (>) a b
 
 
 min : Unit -> Unit -> Unit
