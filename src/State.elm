@@ -112,7 +112,7 @@ initialStock listOfStates =
 update : Config -> ItemOrder -> State -> State
 update config itemOrder state =
     state
-        |> orderSupplies config
+        |> orderSupplies2 config
         --|> orderSuppliesWithCC config
         |> fillCustomerOrder config itemOrder
         |> incrementTime
@@ -205,6 +205,68 @@ orderSupplies config ((State data) as state) =
                 ccOrderAmount : Money
                 ccOrderAmount =
                     Money.min ccAvailable orderCost
+
+                fiatOrderAmount : Money
+                fiatOrderAmount =
+                    Money.min (fiatBalance state) (Money.sub orderCost ccOrderAmount)
+
+                actualOrderAmount =
+                    let
+                        totalOrder =
+                            Money.add ccOrderAmount fiatOrderAmount
+                    in
+                    Unit.itemsFor config.unitCost totalOrder
+
+                message =
+                    ( timeOf state, message_, "" )
+
+                message_ =
+                    "ORDER "
+                        ++ Money.stringVal fiatOrderAmount
+                        ++ ", "
+                        ++ Money.stringVal ccOrderAmount
+                        ++ ", "
+                        ++ Unit.stringVal actualOrderAmount
+            in
+            State
+                { data
+                    | seed = newSeed
+                    , ccBalance = Money.sub (ccBalance state) ccOrderAmount
+                    , fiatBalance = Money.sub (fiatBalance state) fiatOrderAmount
+                    , stock = Unit.add (stockOnHand state) actualOrderAmount
+                    , businessOrder = actualOrderAmount
+                    , log = message :: data.log
+                }
+
+
+orderSupplies2 : Config -> State -> State
+orderSupplies2 config ((State data) as state) =
+    let
+        t_ =
+            timeOf state
+    in
+    case Unit.lt (stockOnHand state) config.stockOnHandThreshold of
+        False ->
+            State
+                { data | businessOrder = Unit.create 0 }
+
+        True ->
+            let
+                ( orderQuantity_, newSeed ) =
+                    Random.step (Random.int (Unit.value config.lowOrder) (Unit.value config.highOrder)) (seedOf state)
+
+                orderQuantity =
+                    Unit.create orderQuantity_
+
+                orderCost =
+                    Unit.costOf config.unitCost orderQuantity
+
+                ccAvailable =
+                    Money.min config.ccOrderMax (ccBalance state)
+
+                ccOrderAmount : Money
+                ccOrderAmount =
+                    Money.min ccAvailable (Money.mulBy 0.1 orderCost |> Money.roundTo 0)
 
                 fiatOrderAmount : Money
                 fiatOrderAmount =

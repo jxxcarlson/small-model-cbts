@@ -7,6 +7,7 @@ module Unit.Money exposing
     , min
     , mulBy
     , mulByInt
+    , roundTo
     , stringVal
     , sub
     , value
@@ -60,6 +61,20 @@ divBy k m =
 divByInt : Int -> Money -> Money
 divByInt k m =
     map (\x -> x / toFloat k) m
+
+
+roundTo_ : Int -> Float -> Float
+roundTo_ k x =
+    let
+        factor =
+            10 ^ toFloat k
+    in
+    toFloat (round (factor * x)) / factor
+
+
+roundTo : Int -> Money -> Money
+roundTo k m =
+    map (roundTo_ k) m
 
 
 min : Money -> Money -> Money

@@ -51,7 +51,10 @@ type alias Model =
     , counter : Int
     , demandMean : String
     , demandSpread : String
-    , initialSeed : Int
+    , initialSeedAsString : String
+    , cycleLengthAsString : String
+    , ccEarningsAsString : String
+    , ccRatioAsString : String
     }
 
 
@@ -87,6 +90,9 @@ type Msg
     | EnterDemandMean String
     | EnterDemandSpread String
     | EnterSeed String
+    | EnterCycleLength String
+    | EnterCCEarnings String
+    | EnterCCRatio String
 
 
 type alias Flags =
@@ -98,14 +104,20 @@ getConfig k =
     List.Extra.getAt k configurations |> Maybe.withDefault Config.default |> Debug.log "CONFIG"
 
 
-initialModel : Int -> Int -> Int -> Int -> Model
-initialModel k demandMean demandSpread demandRunLength =
+initialModel : String -> String -> String -> String -> Int -> Int -> Int -> Model
+initialModel ccEarningsAsString ccRatioAsString cycleLengthAsString seedAsString k demandMean demandSpread =
     let
         initialState =
             State.initialStateWithConfig <| getConfig k
 
+        seed =
+            String.toInt seedAsString |> Maybe.withDefault 1234
+
+        demandRunLength =
+            String.toInt cycleLengthAsString |> Maybe.withDefault 30
+
         future =
-            Future.generateListWithMean 1234 demandMean demandSpread demandRunLength
+            Future.generateListWithMean seed demandMean demandSpread demandRunLength
     in
     { world = World.init initialState future
     , history = [ initialState ]
@@ -115,13 +127,16 @@ initialModel k demandMean demandSpread demandRunLength =
     , counter = 0
     , demandMean = String.fromInt demandMean
     , demandSpread = String.fromInt demandSpread
-    , initialSeed = 1234
+    , initialSeedAsString = seedAsString
+    , cycleLengthAsString = cycleLengthAsString
+    , ccEarningsAsString = ccEarningsAsString
+    , ccRatioAsString = ccRatioAsString
     }
 
 
 bareInit : Int -> ( Model, Cmd Msg )
 bareInit k =
-    initialModel k 10 5 30 |> withNoCmd
+    initialModel "0" "0" "30" "1234" k 10 5 |> withNoCmd
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -159,7 +174,7 @@ update msg model =
                     model.demandSpread |> String.toInt |> Maybe.withDefault 5
 
                 model_ =
-                    initialModel model.configurationIndex m s 30
+                    initialModel model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString model.configurationIndex m s
 
                 newModel =
                     runWorld model_.config model_
@@ -174,7 +189,7 @@ update msg model =
                 s =
                     model.demandSpread |> String.toInt |> Maybe.withDefault 5
             in
-            initialModel model.configurationIndex m s 30 |> withNoCmd
+            initialModel model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString model.configurationIndex m s |> withNoCmd
 
         CycleConfig ->
             let
@@ -191,7 +206,7 @@ update msg model =
                 s =
                     model.demandSpread |> String.toInt |> Maybe.withDefault 5
             in
-            initialModel k m s 30 |> withNoCmd
+            initialModel model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString k m s |> withNoCmd
 
         EnterDemandMean str ->
             { model | demandMean = str } |> withNoCmd
@@ -200,12 +215,16 @@ update msg model =
             { model | demandSpread = str } |> withNoCmd
 
         EnterSeed str ->
-            let
-                seed : Int
-                seed =
-                    String.toInt str |> Maybe.withDefault 0
-            in
-            { model | initialSeed = seed } |> withNoCmd
+            { model | initialSeedAsString = str } |> withNoCmd
+
+        EnterCycleLength str ->
+            { model | cycleLengthAsString = str } |> withNoCmd
+
+        EnterCCEarnings str ->
+            { model | ccEarningsAsString = str } |> withNoCmd
+
+        EnterCCRatio str ->
+            { model | ccRatioAsString = str } |> withNoCmd
 
 
 updateWorld : Config -> Model -> Model
@@ -402,17 +421,26 @@ viewConfiguration model =
 
 viewHistory_ model =
     column [ centerX, alignTop, spacing 5, padding 20, Background.color Style.charcoal, width (px 800) ]
-        (viewHistory model.history
-            ++ [ row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ cycleConfigsButton model, resetButton, stepButton, runButton ] ]
-            ++ [ parameters model ]
-            ++ [ row [ paddingEach { emptyPadding | top = 20 } ] [ legend ] ]
-        )
+        [ column [ width (px 770), scrollbarX ] (viewHistory model.history)
+        , row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ resetButton, stepButton, runButton ]
+        , parameters1 model
+        , parameters2 model
+        , row [ paddingEach { emptyPadding | top = 20 } ] [ legend ]
+        ]
 
 
-parameters model =
+parameters1 model =
     row [ spacing 12, paddingEach { emptyPadding | top = 20 }, Font.color Style.whiteColor ]
-        [ -- textField EnterSeed model.initialSeed "Seed"
-          textField EnterDemandMean model.demandMean "Demand mean"
+        [ textField EnterCCEarnings model.ccEarningsAsString "CC earned"
+        , textField EnterCCRatio model.ccRatioAsString "CC Ratio"
+        ]
+
+
+parameters2 model =
+    row [ spacing 12, paddingEach { emptyPadding | top = 20 }, Font.color Style.whiteColor ]
+        [ textField EnterCycleLength model.cycleLengthAsString "Cycle length"
+        , textField EnterSeed model.initialSeedAsString "Seed"
+        , textField EnterDemandMean model.demandMean "Demand mean"
         , textField EnterDemandSpread model.demandSpread "Demand spread"
         ]
 
@@ -443,7 +471,6 @@ viewMessage ( t, m, note ) =
 legend =
     column [ spacing 8 ]
         [ row [] [ legend1 ]
-        , row [] [ legend2 ]
         ]
 
 
@@ -452,30 +479,18 @@ legend1 =
         (List.map legendFormatter legendItems1)
 
 
-legend2 =
-    row [ spacing 8, Font.color Style.lightColor ]
-        (List.map legendFormatter legendItems2)
-
-
 legendItems1 =
     [ "T: time"
-    , "|"
-    , "FI: Fiat balance"
     , "|"
     , "CC: CC balance"
     , "|"
     , "ST: Stock"
     , "|"
-    , "OF: Orders filled"
-    , "|"
     , "OL: Orders lost"
     , "|"
     , "OO: Original order"
-    ]
-
-
-legendItems2 =
-    [ "CO: customer order"
+    , "|"
+    , "CO: customer order"
     , "|"
     , "BO: business order"
     ]
@@ -526,7 +541,16 @@ viewHistory states =
         |> List.Extra.transpose
         |> List.map List.reverse
         |> List.map (List.map stringFormatter)
-        |> List.indexedMap (\k r -> row [ bg k, spacing 4, padding 4 ] r)
+        |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
+
+
+showIf : Bool -> Element msg -> Element msg
+showIf condition element =
+    if condition then
+        element
+
+    else
+        Element.none
 
 
 stepButton =
