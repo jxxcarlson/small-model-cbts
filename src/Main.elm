@@ -55,6 +55,8 @@ type alias Model =
     , cycleLengthAsString : String
     , ccEarningsAsString : String
     , ccRatioAsString : String
+    , initialFiatBalanceAsString : String
+    , initialStockAsString : String
     }
 
 
@@ -93,6 +95,8 @@ type Msg
     | EnterCycleLength String
     | EnterCCEarnings String
     | EnterCCRatio String
+    | EnterInitialFiatBalance String
+    | EnterInitialStock String
 
 
 type alias Flags =
@@ -104,8 +108,8 @@ getConfig k =
     List.Extra.getAt k configurations |> Maybe.withDefault Config.default |> Debug.log "CONFIG"
 
 
-initialModel : String -> String -> String -> String -> Int -> Int -> Int -> Model
-initialModel ccEarningsAsString ccRatioAsString cycleLengthAsString seedAsString k demandMean demandSpread =
+initialModel : String -> String -> String -> String -> String -> String -> Int -> Int -> Int -> Model
+initialModel initialFiatBalanceAsString initialStockAsString ccEarningsAsString ccRatioAsString cycleLengthAsString seedAsString k demandMean demandSpread =
     let
         initialState =
             State.initialStateWithConfig <| getConfig k
@@ -131,12 +135,14 @@ initialModel ccEarningsAsString ccRatioAsString cycleLengthAsString seedAsString
     , cycleLengthAsString = cycleLengthAsString
     , ccEarningsAsString = ccEarningsAsString
     , ccRatioAsString = ccRatioAsString
+    , initialFiatBalanceAsString = initialFiatBalanceAsString
+    , initialStockAsString = initialStockAsString
     }
 
 
 bareInit : Int -> ( Model, Cmd Msg )
 bareInit k =
-    initialModel "0" "0" "30" "1234" k 10 5 |> withNoCmd
+    initialModel "0" "10" "0" "0" "30" "1234" k 10 5 |> withNoCmd
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -174,7 +180,7 @@ update msg model =
                     model.demandSpread |> String.toInt |> Maybe.withDefault 5
 
                 model_ =
-                    initialModel model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString model.configurationIndex m s
+                    initialModel model.initialFiatBalanceAsString model.initialStockAsString model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString model.configurationIndex m s
 
                 newModel =
                     runWorld model_.config model_
@@ -189,7 +195,7 @@ update msg model =
                 s =
                     model.demandSpread |> String.toInt |> Maybe.withDefault 5
             in
-            initialModel model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString model.configurationIndex m s |> withNoCmd
+            initialModel model.initialFiatBalanceAsString model.initialStockAsString model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString model.configurationIndex m s |> withNoCmd
 
         CycleConfig ->
             let
@@ -206,7 +212,7 @@ update msg model =
                 s =
                     model.demandSpread |> String.toInt |> Maybe.withDefault 5
             in
-            initialModel model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString k m s |> withNoCmd
+            initialModel model.initialFiatBalanceAsString model.initialStockAsString model.ccEarningsAsString model.ccRatioAsString model.cycleLengthAsString model.initialSeedAsString k m s |> withNoCmd
 
         EnterDemandMean str ->
             { model | demandMean = str } |> withNoCmd
@@ -225,6 +231,12 @@ update msg model =
 
         EnterCCRatio str ->
             { model | ccRatioAsString = str } |> withNoCmd
+
+        EnterInitialFiatBalance str ->
+            { model | initialFiatBalanceAsString = str } |> withNoCmd
+
+        EnterInitialStock str ->
+            { model | initialStockAsString = str } |> withNoCmd
 
 
 updateWorld : Config -> Model -> Model
@@ -431,7 +443,9 @@ viewHistory_ model =
 
 parameters1 model =
     row [ spacing 12, paddingEach { emptyPadding | top = 20 }, Font.color Style.whiteColor ]
-        [ textField EnterCCEarnings model.ccEarningsAsString "CC earned"
+        [ textField EnterInitialFiatBalance model.initialFiatBalanceAsString "Initial Fiat bal."
+        , textField EnterInitialStock model.initialStockAsString "Initial Stock"
+        , textField EnterCCEarnings model.ccEarningsAsString "CC earned"
         , textField EnterCCRatio model.ccRatioAsString "CC Ratio"
         ]
 
