@@ -72,6 +72,9 @@ parameters m =
     , ccRatio_ = m.ccRatioAsString
     , cycleLength_ = m.cycleLengthAsString
     , seed_ = m.initialSeedAsString
+    , lowOrder_ = m.lowOrderAsString
+    , highOrder_ = m.highOrderAsString
+    , threshold_ = m.thresholdAsString
     }
 
 
@@ -112,6 +115,9 @@ type Msg
     | EnterCCRatio String
     | EnterInitialFiatBalance String
     | EnterInitialStock String
+    | EnterLowOrder String
+    | EnterHighOrder String
+    | EnterThreshold String
 
 
 type alias Flags =
@@ -130,6 +136,9 @@ type alias Parameters =
     , ccRatio_ : String
     , cycleLength_ : String
     , seed_ : String
+    , lowOrder_ : String
+    , highOrder_ : String
+    , threshold_ : String
     }
 
 
@@ -140,6 +149,9 @@ configWithParameters p c =
         , initialFiatBalance = Money.create (String.toFloat p.fiatBal_ |> Maybe.withDefault 0)
         , initialCCBalance = Money.create (String.toFloat p.ccEarnings_ |> Maybe.withDefault 0)
         , ccRatio = String.toFloat p.ccRatio_ |> Maybe.withDefault 0
+        , lowOrder = Unit.create (String.toInt p.lowOrder_ |> Maybe.withDefault 0)
+        , highOrder = Unit.create (String.toInt p.highOrder_ |> Maybe.withDefault 0)
+        , stockOnHandThreshold = Unit.create (String.toInt p.threshold_ |> Maybe.withDefault 0)
     }
 
 
@@ -150,6 +162,9 @@ initialParameters =
     , ccRatio_ = "0"
     , cycleLength_ = "30"
     , seed_ = "1234"
+    , lowOrder_ = "5"
+    , highOrder_ = "20"
+    , threshold_ = "10"
     }
 
 
@@ -160,7 +175,8 @@ initialModel p configIndex demandMean demandSpread =
             getConfig configIndex
 
         newConfig =
-            configWithParameters p baseConfig
+            Debug.log "NEW CONFIG" <|
+                configWithParameters p baseConfig
 
         initialState =
             Debug.log "INIT STATE" <|
@@ -177,7 +193,7 @@ initialModel p configIndex demandMean demandSpread =
     in
     { world = World.init initialState future
     , history = [ initialState ]
-    , config = getConfig configIndex
+    , config = newConfig
     , configurationIndex = configIndex
     , runState = Paused
     , counter = 0
@@ -189,9 +205,9 @@ initialModel p configIndex demandMean demandSpread =
     , ccRatioAsString = p.ccRatio_
     , initialFiatBalanceAsString = p.fiatBal_
     , initialStockAsString = p.initialStock_
-    , lowOrderAsString = "5"
-    , highOrderAsString = "20"
-    , thresholdAsString = "10"
+    , lowOrderAsString = p.lowOrder_
+    , highOrderAsString = p.highOrder_
+    , thresholdAsString = p.threshold_
     }
 
 
@@ -292,6 +308,15 @@ update msg model =
 
         EnterInitialStock str ->
             { model | initialStockAsString = str } |> withNoCmd
+
+        EnterLowOrder str ->
+            { model | lowOrderAsString = str } |> withNoCmd
+
+        EnterHighOrder str ->
+            { model | highOrderAsString = str } |> withNoCmd
+
+        EnterThreshold str ->
+            { model | thresholdAsString = str } |> withNoCmd
 
 
 updateWorld : Config -> Model -> Model
@@ -559,9 +584,9 @@ parameters1 model =
         , textField EnterInitialStock model.initialStockAsString "Initial Stock"
         , textField EnterCCEarnings model.ccEarningsAsString "CC earned"
         , textField EnterCCRatio model.ccRatioAsString "CC Ratio"
-        , textField EnterCCRatio model.lowOrderAsString "Low order"
-        , textField EnterCCRatio model.highOrderAsString "High order"
-        , textField EnterCCRatio model.thresholdAsString "Order threshold"
+        , textField EnterLowOrder model.lowOrderAsString "Low order"
+        , textField EnterHighOrder model.highOrderAsString "High order"
+        , textField EnterThreshold model.thresholdAsString "Order threshold"
         ]
 
 
