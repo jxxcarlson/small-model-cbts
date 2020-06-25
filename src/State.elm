@@ -122,7 +122,16 @@ update config itemOrder state =
 
 labels : List ( String, String )
 labels =
-    [ ( "T", "Time step" ), ( "FI", "Fiat currency" ), ( "CC", "Complementary currency balance" ), ( "ST", "Stock" ), ( "OF", "" ), ( "OL", "Orders lost" ), ( "CD", "Customer demand" ), ( "CB", "Customer bought" ), ( "OS", "Order to suppliers" ) ]
+    [ ( "T", "Time step" )
+    , ( "FC", "Fiat currency (balance)" )
+    , ( "CC", "Complementary currency (balance)" )
+    , ( "ST", "Stock" )
+    , ( "OF", "Orders filled" )
+    , ( "OL", "Orders lost" )
+    , ( "CD", "Customer demand" )
+    , ( "CB", "Customer bought" )
+    , ( "OS", "Orders to suppliers" )
+    ]
 
 
 stringVal : State -> List String

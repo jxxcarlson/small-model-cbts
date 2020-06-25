@@ -573,7 +573,6 @@ viewHistory_ model =
         , row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ resetButton, stepButton, runButton ]
         , parameters1 model
         , parameters2 model
-        , row [ paddingEach { emptyPadding | top = 20 } ] [ legend ]
         ]
 
 
@@ -699,10 +698,6 @@ viewState state =
     column [ width (px 20) ] (List.map stringFormatter (State.stringVal state))
 
 
-labels =
-    List.map stringFormatter2 State.labels
-
-
 bg : Int -> Attr decorative msg
 bg k =
     if k == 3 || k == 6 then
@@ -720,57 +715,49 @@ bg k =
                 Background.color Style.rowB
 
 
-
---
---viewHistory1 : List State -> List (Element msg)
---viewHistory1 states =
---    let
---        ll : List (Element msg)
---        ll =
---            List.map stringFormatter2 State.labels
---                |> List.reverse
---                |> List.map (\x -> [ x ])
---                |> List.Extra.transpose
---                |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
---    in
---    viewHistory2 states ++ ll
-
-
-viewHistory : List State -> List (Element msg)
-viewHistory states =
+viewHistory__ : List State -> List (Element msg)
+viewHistory__ states =
     List.map State.stringVal states
-        |> (\x -> x ++ [ List.map Tuple.first State.labels ])
         |> List.Extra.transpose
         |> List.map List.reverse
         |> List.map (List.map stringFormatter)
-        |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
+        -- |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
+        |> List.indexedMap (\k r -> row [ bg k, spacing 4, padding 4 ] r)
+
+
+viewHistory : List State -> List (Element Msg)
+viewHistory states =
+    addLabels labels (viewHistory__ states)
+
+
+addLabels : List (Element msg) -> List (Element msg) -> List (Element msg)
+addLabels labels_ history_ =
+    List.map2 (\label_ row_ -> row [] [ label_, row_ ]) labels_ history_
 
 
 
---  |> List.reverse
+-- |> List.map
 
 
-viewHistoryA : List State -> List (Element msg)
-viewHistoryA states =
-    let
-        ll : List (Element msg)
-        ll =
-            List.map stringFormatter2 State.labels
-                |> List.reverse
-                |> List.map (\x -> [ x ])
-                |> List.Extra.transpose
-                |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
-    in
-    viewHistory2A states ++ ll
+labels : List (Element Msg)
+labels =
+    List.indexedMap (\k data -> buttonMaker k data) State.labels
 
 
-viewHistory2A : List State -> List (Element msg)
-viewHistory2A states =
-    List.map State.stringVal states
-        -- |> (\x -> x ++ [ List.map Tuple.first State.labels ])
-        |> List.map List.reverse
-        |> List.map (List.map stringFormatter)
-        |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
+buttonMaker : Int -> ( String, String ) -> Element Msg
+buttonMaker k ( label, title ) =
+    el
+        [ Element.htmlAttribute (HA.title title)
+        , Element.htmlAttribute (HA.style "cursor" "pointer")
+        , bg k
+        , paddingXY 2 4
+        , Font.size 12
+        , height (px 20)
+
+        -- , Font.color Style.whiteColor
+        , width (px 20)
+        ]
+        (text label)
 
 
 showIf : Bool -> Element msg -> Element msg
