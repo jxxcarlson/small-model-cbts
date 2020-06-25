@@ -120,9 +120,18 @@ update config itemOrder state =
         |> incrementTime
 
 
-labels : List String
+labels : List ( String, String )
 labels =
-    [ "T", "FI", "CC", "ST", "OF", "OL", "OO", "CO", "BO" ]
+    [ ( "T", "Time step" )
+    , ( "FC", "Fiat currency (balance)" )
+    , ( "CC", "Complementary currency (balance)" )
+    , ( "ST", "Stock" )
+    , ( "OF", "Orders filled" )
+    , ( "OL", "Orders lost" )
+    , ( "CD", "Customer demand" )
+    , ( "CB", "Customer bought" )
+    , ( "OS", "Orders to suppliers" )
+    ]
 
 
 stringVal : State -> List String

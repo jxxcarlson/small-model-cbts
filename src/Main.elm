@@ -15,6 +15,7 @@ import Element.Font as Font
 import Future exposing (Future)
 import Generate
 import Html exposing (Html)
+import Html.Attributes as HA
 import List.Extra
 import SimpleGraph exposing (Option(..))
 import Stat
@@ -658,6 +659,7 @@ emptyPadding =
     { left = 0, right = 0, top = 0, bottom = 0 }
 
 
+stringFormatter : String -> Element msg
 stringFormatter s =
     el [ Font.size 12, width (px 20), paddingEach { emptyPadding | right = 4 } ] (el [ alignRight ] (text s))
 
@@ -665,10 +667,6 @@ stringFormatter s =
 viewState : State -> Element Msg
 viewState state =
     column [ width (px 20) ] (List.map stringFormatter (State.stringVal state))
-
-
-labels =
-    List.map stringFormatter State.labels
 
 
 bg : Int -> Attr decorative msg
@@ -688,15 +686,53 @@ bg k =
                 Background.color Style.rowB
 
 
-viewHistory : List State -> List (Element msg)
-viewHistory states =
+viewHistory__ : List State -> List (Element msg)
+viewHistory__ states =
     List.map State.stringVal states
-        |> (\x -> x ++ [ State.labels ])
         |> List.Extra.transpose
         |> List.map List.reverse
         |> List.map (List.map stringFormatter)
         -- |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
         |> List.indexedMap (\k r -> showIf True (row [ bg k, spacing 4, padding 4 ] r))
+
+
+viewHistory : List State -> List (Element Msg)
+viewHistory states =
+    addLabels labels (viewHistory__ states)
+
+
+
+--|> (\history_ -> List.map2 (\label_ r -> label_ :: r) labels history_)
+
+
+addLabels : List (Element msg) -> List (Element msg) -> List (Element msg)
+addLabels labels_ history_ =
+    List.map2 (\label_ row_ -> row [] [ label_, row_ ]) labels_ history_
+
+
+
+-- |> List.map
+
+
+labels : List (Element Msg)
+labels =
+    List.indexedMap (\k data -> buttonMaker k data) State.labels
+
+
+buttonMaker : Int -> ( String, String ) -> Element Msg
+buttonMaker k ( label, title ) =
+    el
+        [ Element.htmlAttribute (HA.title title)
+        , Element.htmlAttribute (HA.style "cursor" "pointer")
+        , bg k
+        , paddingXY 2 4
+        , Font.size 12
+        , height (px 19)
+
+        -- , Font.color Style.whiteColor
+        , width (px 20)
+        ]
+        (text label)
 
 
 showIf : Bool -> Element msg -> Element msg
