@@ -15,6 +15,7 @@ import Element.Font as Font
 import Future exposing (Future)
 import Generate
 import Html exposing (Html)
+import Html.Attributes as HA
 import List.Extra
 import SimpleGraph exposing (Option(..))
 import Stat
@@ -368,7 +369,7 @@ viewHistoryAndConfiguration model =
 viewResults : Model -> Element Msg
 viewResults model =
     column [ Font.size 12, paddingXY 12 8, spacing 8, width (px 800), alignTop, Background.color Style.lightColor ]
-        [ viewUnit "Business Orders" (State.sumRowOfUnits State.getBusinessOrder model.history)
+        [ viewUnit "Orders Placed" (State.sumRowOfUnits State.getBusinessOrder model.history)
         , viewUnit "Orders Lost" (State.getOrdersLost (State.last model.history))
         , viewStats "Demand"
             (State.sumRowOfUnits State.getDemand model.history)
@@ -628,7 +629,24 @@ legend =
 
 legend1 =
     row [ spacing 8, Font.color Style.lightColor ]
-        (List.map legendFormatter legendItems1)
+        (List.map legendFormatter legendItems2)
+
+
+legendItems2 =
+    [ "T: time"
+    , "|"
+    , "CC: CC balance"
+    , "|"
+    , "ST: Stock"
+    , "|"
+    , "OL: Orders lost"
+    , "|"
+    , "OO: Original order"
+    , "|"
+    , "CO: customer order"
+    , "|"
+    , "XX: business order"
+    ]
 
 
 legendItems1 =
@@ -644,8 +662,12 @@ legendItems1 =
     , "|"
     , "CO: customer order"
     , "|"
-    , "BO: business order"
+    , "OS: business order"
     ]
+
+
+legendFormatter2 str title =
+    el [ Font.size 14, Element.htmlAttribute (HA.title title) ] (text str)
 
 
 legendFormatter str =
@@ -656,8 +678,20 @@ emptyPadding =
     { left = 0, right = 0, top = 0, bottom = 0 }
 
 
+stringFormatter : String -> Element msg
 stringFormatter s =
     el [ Font.size 12, width (px 20), paddingEach { emptyPadding | right = 4 } ] (el [ alignRight ] (text s))
+
+
+stringFormatter2 : ( String, String ) -> Element msg
+stringFormatter2 ( s, t ) =
+    el
+        [ Font.size 12
+        , width (px 20)
+        , paddingEach { emptyPadding | right = 4 }
+        , Element.htmlAttribute (HA.title t)
+        ]
+        (el [ alignRight ] (text s))
 
 
 viewState : State -> Element Msg
@@ -666,7 +700,7 @@ viewState state =
 
 
 labels =
-    List.map stringFormatter State.labels
+    List.map stringFormatter2 State.labels
 
 
 bg : Int -> Attr decorative msg
@@ -686,11 +720,54 @@ bg k =
                 Background.color Style.rowB
 
 
+
+--
+--viewHistory1 : List State -> List (Element msg)
+--viewHistory1 states =
+--    let
+--        ll : List (Element msg)
+--        ll =
+--            List.map stringFormatter2 State.labels
+--                |> List.reverse
+--                |> List.map (\x -> [ x ])
+--                |> List.Extra.transpose
+--                |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
+--    in
+--    viewHistory2 states ++ ll
+
+
 viewHistory : List State -> List (Element msg)
 viewHistory states =
     List.map State.stringVal states
-        |> (\x -> x ++ [ State.labels ])
+        |> (\x -> x ++ [ List.map Tuple.first State.labels ])
         |> List.Extra.transpose
+        |> List.map List.reverse
+        |> List.map (List.map stringFormatter)
+        |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
+
+
+
+--  |> List.reverse
+
+
+viewHistoryA : List State -> List (Element msg)
+viewHistoryA states =
+    let
+        ll : List (Element msg)
+        ll =
+            List.map stringFormatter2 State.labels
+                |> List.reverse
+                |> List.map (\x -> [ x ])
+                |> List.Extra.transpose
+                |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))
+    in
+    viewHistory2A states ++ ll
+
+
+viewHistory2A : List State -> List (Element msg)
+viewHistory2A states =
+    List.map State.stringVal states
+        -- |> (\x -> x ++ [ List.map Tuple.first State.labels ])
         |> List.map List.reverse
         |> List.map (List.map stringFormatter)
         |> List.indexedMap (\k r -> showIf (k /= 1 && k /= 4) (row [ bg k, spacing 4, padding 4 ] r))

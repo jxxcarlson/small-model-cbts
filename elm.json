@@ -12,13 +12,13 @@
             "elm/html": "1.0.0",
             "elm/random": "1.0.0",
             "elm/time": "1.0.0",
-            "elm-community/list-extra": "8.2.3",
+            "elm-community/list-extra": "8.2.4",
             "elm-community/maybe-extra": "5.2.0",
             "folkertdev/elm-deque": "3.0.1",
             "jxxcarlson/elm-graph": "3.0.0",
             "jxxcarlson/elm-stat": "4.0.3",
-            "jxxcarlson/elm-widget": "3.0.1",
-            "mdgriffith/elm-ui": "1.1.5"
+            "jxxcarlson/elm-widget": "3.1.0",
+            "mdgriffith/elm-ui": "1.1.7"
         },
         "indirect": {
             "avh4/elm-color": "1.0.0",
@@ -36,7 +36,7 @@
             "ianmackenzie/elm-geometry": "1.2.1",
             "ianmackenzie/elm-interval": "1.0.1",
             "ianmackenzie/elm-triangular-mesh": "1.0.4",
-            "justinmimbs/date": "3.2.0",
+            "justinmimbs/date": "3.2.1",
             "justinmimbs/time-extra": "1.1.0",
             "ryannhg/date-format": "2.3.0",
             "zgohr/elm-csv": "1.0.1"
