@@ -575,7 +575,8 @@ viewHistory_ model =
         , row [ paddingEach { emptyPadding | top = 10 }, spacing 12 ] [ resetButton, stepButton, runButton ]
         , parameters1 model
         , parameters2 model
-        , row [ paddingEach { emptyPadding | top = 20 } ] [ legend ]
+
+        --  , row [ paddingEach { emptyPadding | top = 20 } ] [ legend ]
         ]
 
 
