@@ -578,22 +578,22 @@ viewHistory_ model =
 
 parameters1 model =
     row [ spacing 12, paddingEach { emptyPadding | top = 20 }, Font.color Style.whiteColor ]
-        [ textField EnterInitialFiatBalance model.initialFiatBalanceAsString "Initial Fiat bal."
-        , textField EnterInitialStock model.initialStockAsString "Initial Stock"
-        , textField EnterCCEarnings model.ccEarningsAsString "CC earned"
-        , textField EnterCCRatio model.ccRatioAsString "CC Ratio"
-        , textField EnterLowOrder model.lowOrderAsString "Low order"
-        , textField EnterHighOrder model.highOrderAsString "High order"
-        , textField EnterThreshold model.thresholdAsString "Order threshold"
+        [ textField EnterInitialFiatBalance model.initialFiatBalanceAsString "SetUp" "You can test with the defaut values or can change them. After making changes, press SetUp"
+        , textField EnterInitialStock model.initialStockAsString "Initial Stock" ""
+        , textField EnterCCEarnings model.ccEarningsAsString "CC earned" "Units Of Complementary Currency Earned"
+        , textField EnterCCRatio model.ccRatioAsString "CC Acc. SPL" "Fraction Pf Complementary Currency Accepted By Supplier"
+        , textField EnterLowOrder model.lowOrderAsString "Min Order SPL" "Minimum Order Asked to Supplier"
+        , textField EnterHighOrder model.highOrderAsString "Max Order SPL" "Maximum Order Asked to Supplier"
+        , textField EnterThreshold model.thresholdAsString "Trigger SPL" "Trigger Amount to Put Order to Supplier"
         ]
 
 
 parameters2 model =
     row [ spacing 12, paddingEach { emptyPadding | top = 20 }, Font.color Style.whiteColor ]
-        [ textField EnterCycleLength model.cycleLengthAsString "Cycle length"
-        , textField EnterSeed model.initialSeedAsString "Seed"
-        , textField EnterDemandMean model.demandMean "Demand mean"
-        , textField EnterDemandSpread model.demandSpread "Demand spread"
+        [ textField EnterCycleLength model.cycleLengthAsString "Cycle length" ""
+        , textField EnterSeed model.initialSeedAsString "Seed" ""
+        , textField EnterDemandMean model.demandMean "Demand mean" ""
+        , textField EnterDemandSpread model.demandSpread "Demand spread" ""
         ]
 
 
@@ -770,9 +770,10 @@ showIf condition element =
 
 
 stepButton =
-    Button.make Step "Step"
+    Button.make Step "Run Step"
         |> Button.withWidth (Bounded 100)
         |> Button.withSelected False
+        |> Button.withTitle "Run one step of the simulation"
         |> Button.toElement
 
 
@@ -811,8 +812,9 @@ footer model =
         []
 
 
-textField msg text label =
+textField msg text label title =
     TextField.make msg text label
         |> TextField.withHeight 30
         |> TextField.withLabelPosition LabelAbove
+        |> TextField.withTitle title
         |> TextField.toElement
